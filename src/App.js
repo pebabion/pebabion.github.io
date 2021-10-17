@@ -25,7 +25,7 @@ function App() {
         <div class="p-2 mb-1"></div>
         <p>I'm a Data Engineer 👨‍🔧🔧⚙️🚀</p>
         <p>
-          I am currently living Singapore 🇸🇬 in a sunny, tropical island 🌤🏖🌴 in
+          I am currently living Singapore 🇸🇬, a sunny, tropical island 🌤🏖🌴 in
           Southeast Asia 🌏
         </p>
       </main>
