@@ -23,5 +23,6 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Install, build and deploy
         run: |
+          git remote add origin https://${{ secrets.GITHUB_TOKEN }}github.com/pebabion/pebabion.github.io.git;
           npm install;
           npm run deploy
