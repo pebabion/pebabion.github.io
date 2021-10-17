@@ -2,6 +2,7 @@ import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 import Link from "./components/Link";
+import Footer from "./components/Footer";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
           Southeast Asia 🌏
         </p>
       </main>
+      <Footer></Footer>
     </div>
   );
 }
