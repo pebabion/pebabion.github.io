@@ -14,7 +14,7 @@ function App() {
       <main>
         <p>Hello 👋🏽, my name is Kelvin!</p>
         <p>
-          I'm a Data Engineer 👩‍🔧🔧⚙️🚀. I am currently living in a sunny,
+          I'm a Data Engineer 👨‍🔧🔧⚙️🚀. I am currently living in a sunny,
           tropical island in Southeast Asia called Singapore 🇸🇬
         </p>
       </main>
