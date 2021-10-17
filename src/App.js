@@ -12,7 +12,7 @@ function App() {
         />
       </header>
       <main>
-        <p>Hello 👋🏽, my name is Kelvin!</p>
+        <h1>Hello 👋🏽, my name is Kelvin!</h1>
         <p>
           I'm a Data Engineer 👨‍🔧🔧⚙️🚀. I am currently living in a sunny,
           tropical island in Southeast Asia called Singapore 🇸🇬
