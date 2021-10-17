@@ -1,3 +1,3 @@
 # pebabion.com
 
-Source code of [pebabion.com](https://pebabion.com)
+Source code for [pebabion.com](https://pebabion.com) 🤓
