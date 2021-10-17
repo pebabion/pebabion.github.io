@@ -23,6 +23,6 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Install, build and deploy
         run: |
-          git config --list;
+          git config -global user.name "${{ GITHUB_ACTOR }}"
           npm install;
           npm run deploy
