@@ -4,16 +4,15 @@
 }
 
 .App-logo {
-  height: 40vmin;
+  max-height: 20rem;
   pointer-events: none;
   border-radius: 50%;
 }
 
 .App-header {
   background-color: #ffffff;
-  min-height: 60vh;
-  display: flex;
-  flex-direction: column;
+  margin-top: 5rem;
+  margin-bottom: 5rem;
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
