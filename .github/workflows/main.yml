@@ -23,5 +23,6 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Install, build and deploy
         run: |
+          git config --list;
           npm install;
           npm run deploy
