@@ -20,11 +20,13 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      # Runs a set of commands using the runners shell
-      - name: Install, build and deploy
-        run: |
+      - name: Configure git
+      - run: |
           git config --global user.name ${{ github.actor }};
           git config --global user.email '<>';
           git remote set-url origin https://pebabion:${{ secrets.GITHUB_TOKEN }}@github.com/pebabion/pebabion.github.io.git;
+
+      - name: Install, build and deploy
+        run: |
           npm install;
           npm run deploy
