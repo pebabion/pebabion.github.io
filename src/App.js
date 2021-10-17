@@ -13,9 +13,10 @@ function App() {
       </header>
       <main>
         <h1>Hello 👋🏽, my name is Kelvin!</h1>
+        <p>I'm a Data Engineer 👨‍🔧🔧⚙️🚀</p>
         <p>
-          I'm a Data Engineer 👨‍🔧🔧⚙️🚀. I am currently living in a sunny,
-          tropical island in Southeast Asia called Singapore 🇸🇬
+          I am currently living in a sunny, tropical island 🌤🏖🌴 in Southeast
+          Asia called Singapore 🇸🇬🌏
         </p>
       </main>
     </div>
