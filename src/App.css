@@ -3,21 +3,6 @@
   font-size: 120%;
 }
 
-.App-logo {
-  max-height: 20rem;
-  pointer-events: none;
-  border-radius: 50%;
-}
-
-.App-header {
-  background-color: #ffffff;
-  margin-top: 5rem;
-  margin-bottom: 5rem;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-}
-
 .App-link {
   color: #61dafb;
 }

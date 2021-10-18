@@ -1,5 +1,4 @@
 import "./App.css";
-import "bootstrap/dist/css/bootstrap.min.css";
 
 import Link from "./components/Link";
 import Footer from "./components/Footer";
@@ -7,15 +6,15 @@ import Footer from "./components/Footer";
 function App() {
   return (
     <div className="App">
-      <div className="p-1 mb-1 bg-success text-white"></div>
-      <header className="App-header">
+      <div className="h-2 bg-green-600"></div>
+      <header>
         <img
           src="https://github.com/pebabion.png"
-          className="App-logo"
+          className="rounded-full max-h-80 mx-auto my-20"
           alt="logo"
         />
       </header>
-      <main>
+      <main className="lg:max-w-6xl mx-auto">
         <h2>
           Hello 👋🏽! I'm{" "}
           <strong>
@@ -24,18 +23,18 @@ function App() {
           </strong>
         </h2>
         <div className="p-2 mb-1"></div>
-        <p>I'm a Data Engineer 👨‍🔧🔧⚙️🚀</p>
-        <p>
+        <div className="my-3">I'm a Data Engineer 👨‍🔧🔧⚙️🚀</div>
+        <div className="my-3">
           I am currently living in Singapore 🇸🇬, a sunny tropical island 🌤🏖🌴 in
           Southeast Asia 🌏
-        </p>
-        <p>
+        </div>
+        <div className="my-3">
           I enjoy building applications/platforms with distributed systems,
           especially for AI and ML.
           <br />
           Feel free to head over to my GitHub for the projects that I am working
           on! 🔨🛠
-        </p>
+        </div>
       </main>
       <div className="p-2 mb-1"></div>
       <Footer></Footer>
