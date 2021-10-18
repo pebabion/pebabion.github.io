@@ -15,13 +15,13 @@ function App() {
         />
       </header>
       <main className="lg:max-w-6xl mx-auto">
-        <h2>
+        <h1 className="text-3xl">
           Hello 👋🏽! I'm{" "}
           <strong>
             <Link href="https://twitter.com/pebabiion">@pebabion</Link>
             (Kelvin Nguyen Le)
           </strong>
-        </h2>
+        </h1>
         <div className="p-2 mb-1"></div>
         <div className="my-3">I'm a Data Engineer 👨‍🔧🔧⚙️🚀</div>
         <div className="my-3">

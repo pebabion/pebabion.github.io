@@ -6,7 +6,7 @@ export default function Link({ href, children }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="text-success hover:underline"
+      className="text-green-600 hover:underline"
     >
       {children}
     </a>
