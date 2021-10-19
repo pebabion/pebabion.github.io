@@ -18,8 +18,8 @@ function App() {
         <h1 className="text-3xl">
           Hello 👋🏽! I'm{" "}
           <strong>
-            <Link href="https://twitter.com/pebabiion">@pebabion</Link>
-            (Kelvin Nguyen Le)
+            <Link href="https://twitter.com/pebabiion">@pebabion</Link> (Kelvin
+            Nguyen Le)
           </strong>
         </h1>
         <div className="p-2 mb-1"></div>
