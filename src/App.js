@@ -1,3 +1,5 @@
+import { faGithub, faLinkedin } from "@fortawesome/free-brands-svg-icons";
+import SocialLink from "./components/SocialLink";
 import "./App.css";
 
 import Link from "./components/Link";
@@ -36,7 +38,18 @@ function App() {
           on! 🔨🛠
         </div>
       </main>
-      <div className="p-2 mb-1"></div>
+      <div className="text-center flex justify-center flex-wrap text-2xl m-4 mb-4">
+        <SocialLink
+          href="https://github.com/pebabion"
+          title="GitHub"
+          icon={faGithub}
+        ></SocialLink>
+        <SocialLink
+          href="https://www.linkedin.com/in/knguyen1794/"
+          title="LinkedIn"
+          icon={faLinkedin}
+        ></SocialLink>
+      </div>
       <Footer></Footer>
     </div>
   );
