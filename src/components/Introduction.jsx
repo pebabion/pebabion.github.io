@@ -9,8 +9,8 @@ const Introduction = () => {
       <div className="text-gray-800 dark:text-gray-300 lg:max-w-6xl mx-auto">
         <div>
           <img
-            src="https://github.com/pebabion.png"
-            className="rounded-full max-h-80 mx-auto my-20"
+            src="https://www.gravatar.com/avatar/6007806184d8cbfc17fa57addfb752ee?s=300"
+            className="rounded-full max-h-80 mx-auto my-20 border-4 border-green-600"
             alt="logo"
           />
         </div>
