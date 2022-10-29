@@ -7,6 +7,13 @@ const Introduction = () => {
   return (
     <>
       <div className="text-gray-800 dark:text-gray-300 lg:max-w-6xl mx-auto">
+        <div>
+          <img
+            src="https://github.com/pebabion.png"
+            className="rounded-full max-h-80 mx-auto my-20"
+            alt="logo"
+          />
+        </div>
         <h1 className="text-3xl">
           Hello 👋🏽! I'm{" "}
           <strong>
