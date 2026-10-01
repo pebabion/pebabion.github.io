@@ -1,0 +1,48 @@
+---
+import ExternalLink from "../components/ExternalLink.astro";
+import PostList from "../components/PostList.astro";
+import SocialLinks from "../components/SocialLinks.astro";
+import { AVATAR_URL, SITE_DESCRIPTION } from "../consts";
+import Base from "../layouts/Base.astro";
+import { getPosts } from "../lib/posts";
+
+const latest = (await getPosts()).slice(0, 3);
+---
+
+<Base title="pebabion's website" description={SITE_DESCRIPTION}>
+  <section class="text-center">
+    <img
+      src={AVATAR_URL}
+      class="mx-auto my-16 max-h-80 rounded-full border-4 border-green-600"
+      width="300"
+      height="300"
+      alt="pebabion"
+    />
+    <h1 class="text-3xl">
+      Hello 👋🏽! I'm{" "}
+      <strong><ExternalLink href="https://twitter.com/pebabiion">@pebabion</ExternalLink> (Kelvin Nguyen Le)</strong>
+    </h1>
+    <div class="mt-6 mb-3">I'm a Data Engineer 👨‍🔧🔧⚙️🚀</div>
+    <div class="my-3">
+      I am currently living in Singapore 🇸🇬, a sunny tropical island 🌤🏖🌴 in Southeast Asia 🌏
+    </div>
+    <div class="my-3">
+      I enjoy building applications/platforms with distributed systems, especially for AI and ML.
+      <br />
+      Feel free to head over to my GitHub for the projects that I am working on! 🔨🛠
+    </div>
+    <SocialLinks />
+  </section>
+
+  {
+    latest.length > 0 && (
+      <section class="mb-12">
+        <h2 class="mb-6 border-b border-gray-300 pb-2 text-2xl font-semibold dark:border-gray-600">Latest posts</h2>
+        <PostList posts={latest} />
+        <p class="mt-6">
+          <a href="/blog/" class="text-green-600 hover:underline">All posts →</a>
+        </p>
+      </section>
+    )
+  }
+</Base>

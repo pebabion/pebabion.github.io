@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-main-bg: #fafbfb;
+  --color-main-dark-bg: #20232a;
+  --color-secondary-dark-bg: #33373e;
+}
+
+body {
+  font-size: 120%;
+}
+
+/* Shiki emits both themes; pick one with the colour scheme. */
+@media (prefers-color-scheme: dark) {
+  .astro-code,
+  .astro-code span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+  }
+}
