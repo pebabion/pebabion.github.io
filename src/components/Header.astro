@@ -1,0 +1,29 @@
+---
+const links = [
+  { href: "/", label: "Home" },
+  { href: "/blog/", label: "Blog" },
+];
+const path = Astro.url.pathname;
+---
+
+<header>
+  <div class="h-2 bg-green-600"></div>
+  <nav class="mx-auto flex max-w-3xl justify-end gap-6 px-4 py-4 text-base">
+    {
+      links.map(({ href, label }) => {
+        const active = href === "/" ? path === "/" : path.startsWith(href);
+        return (
+          <a
+            href={href}
+            class:list={[
+              "hover:text-green-600",
+              active ? "font-semibold text-green-600" : "text-gray-600 dark:text-gray-300",
+            ]}
+          >
+            {label}
+          </a>
+        );
+      })
+    }
+  </nav>
+</header>

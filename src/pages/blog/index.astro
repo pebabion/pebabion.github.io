@@ -1,0 +1,13 @@
+---
+import PostList from "../../components/PostList.astro";
+import Base from "../../layouts/Base.astro";
+import { getPosts } from "../../lib/posts";
+
+const posts = await getPosts();
+---
+
+<Base title="Blog · pebabion" description="Posts by pebabion (Kelvin Nguyen Le)">
+  <h1 class="mt-8 mb-8 text-3xl font-semibold">Blog</h1>
+  {posts.length > 0 ? <PostList posts={posts} /> : <p>Nothing here yet.</p>}
+  <div class="mb-12"></div>
+</Base>

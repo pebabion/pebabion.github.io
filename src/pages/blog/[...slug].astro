@@ -1,0 +1,41 @@
+---
+import { Image } from "astro:assets";
+import { type CollectionEntry, render } from "astro:content";
+import FormattedDate from "../../components/FormattedDate.astro";
+import Base from "../../layouts/Base.astro";
+import { getPosts } from "../../lib/posts";
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post) => ({ params: { slug: post.id }, props: post }));
+}
+
+type Props = CollectionEntry<"blog">;
+
+const post = Astro.props;
+const { title, description, pubDate, updatedDate, tags, heroImage } = post.data;
+const { Content } = await render(post);
+---
+
+<Base title={`${title} · pebabion`} description={description} image={heroImage?.src} type="article">
+  <article class="mt-8 mb-12">
+    <header class="mb-8">
+      <h1 class="text-4xl font-bold">{title}</h1>
+      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <FormattedDate date={pubDate} />
+        {
+          updatedDate && (
+            <>
+              · updated <FormattedDate date={updatedDate} />
+            </>
+          )
+        }
+        {tags.length > 0 && <> · {tags.map((tag) => `#${tag}`).join(" ")}</>}
+      </p>
+    </header>
+    {heroImage && <Image src={heroImage} alt="" class="mb-8 rounded-lg" width={1200} />}
+    <div class="prose max-w-none dark:prose-invert prose-a:text-green-600 prose-code:before:content-none prose-code:after:content-none">
+      <Content />
+    </div>
+  </article>
+</Base>
