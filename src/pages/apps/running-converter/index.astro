@@ -22,13 +22,13 @@ const results = [
 ];
 // Inputs read as one big centred number, not as form boxes.
 const digits =
-  "min-w-0 rounded-lg bg-transparent py-1 text-6xl font-bold tabular-nums text-white placeholder:text-white/40 focus:bg-white/15 focus:outline-none";
+  "min-w-0 rounded-lg bg-transparent py-0.5 text-6xl font-bold tabular-nums text-white placeholder:text-white/40 focus:bg-white/15 focus:outline-none";
 const raised = "touch-manipulation select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white";
 ---
 
 <Base title="Running converter · pebabion" description="Convert a running pace or speed into every other unit, with race finish times.">
   <div class="mx-auto max-w-xl pb-12">
-    <h1 class="mb-3 text-2xl font-semibold sm:mt-8">Running converter</h1>
+    <h1 class="mb-2 text-xl font-semibold sm:mt-8 sm:mb-3 sm:text-2xl">Running converter</h1>
 
     <section
       class="rounded-3xl bg-gradient-to-b from-green-600 to-green-800 p-3 text-white shadow-lg shadow-green-900/20 dark:from-green-700 dark:to-green-900"
@@ -52,7 +52,7 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
         }
       </div>
 
-      <div class="flex items-baseline justify-center py-2">
+      <div class="flex items-baseline justify-center py-1">
         <div id="pace-input" class="flex items-baseline">
           <input id="min" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="8" aria-label="Minutes" class:list={[digits, "w-[2.3ch] pr-1 text-right"]} />
           <span class="text-5xl font-bold text-white/80">:</span>
@@ -111,26 +111,25 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
       }
     </section>
 
-    <button
-      id="save"
-      type="button"
-      disabled
-      class="mt-3 min-h-12 w-full rounded-2xl bg-green-600 text-lg font-semibold text-white transition-colors hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 disabled:opacity-40 dark:focus-visible:ring-offset-main-dark-bg"
-    >
-      Save to history
-    </button>
-
-    <section class="mt-6" aria-labelledby="history-title">
-      <div class="mb-2 flex items-center justify-between">
+    <section class="mt-4" aria-labelledby="history-title">
+      <div class="flex items-center justify-between">
         <h2 id="history-title" class="text-lg font-semibold">History</h2>
-        <button id="clear" type="button" hidden class="min-h-11 px-2 text-base text-red-600 hover:underline dark:text-red-400">
-          Clear all
+        <button
+          id="save"
+          type="button"
+          disabled
+          class="min-h-10 rounded-full bg-green-600 px-5 text-base font-semibold text-white transition-colors hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 disabled:opacity-40 dark:focus-visible:ring-offset-main-dark-bg"
+        >
+          Save
         </button>
       </div>
-      <p id="history-empty" class="text-base text-gray-500 dark:text-gray-400">
-        Saved conversions show up here. They stay on this device only.
+      <p id="history-empty" class="mt-2 text-base text-gray-500 dark:text-gray-400">
+        Tap Save to keep a conversion. History stays on this device only.
       </p>
-      <ul id="history" class="divide-y divide-gray-200 dark:divide-gray-700"></ul>
+      <ul id="history" class="mt-1 divide-y divide-gray-200 dark:divide-gray-700/70"></ul>
+      <button id="clear" type="button" hidden class="mt-1 min-h-10 text-sm text-red-600 hover:underline dark:text-red-400">
+        Clear all history
+      </button>
     </section>
   </div>
 </Base>
@@ -307,35 +306,39 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
 
   let history = loadHistory();
 
+  // "2:56 PM" for today, "Oct 4" for earlier.
+  function whenLabel(at: number) {
+    const d = new Date(at);
+    return d.toDateString() === new Date().toDateString()
+      ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+      : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
   function renderHistory() {
     historyEl.replaceChildren(
       ...history.map((e) => {
         const o = outputs(e.secPerKm);
         const li = document.createElement("li");
-        li.className = "flex items-center gap-2";
+        li.className = "flex items-center gap-1";
 
         const load = document.createElement("button");
         load.type = "button";
-        load.className = "min-h-14 flex-1 py-2 text-left";
+        load.className = "flex min-h-12 min-w-0 flex-1 items-baseline gap-2 py-1.5 text-left";
         load.innerHTML = `
-          <span class="flex items-baseline justify-between gap-2">
-            <span class="font-semibold tabular-nums"></span>
-            <span class="shrink-0 text-xs text-gray-500"></span>
-          </span>
-          <span class="block text-sm text-gray-600 tabular-nums dark:text-gray-400"></span>`;
-        const [title, when] = load.children[0].children as unknown as HTMLElement[];
-        const detail = load.children[1] as HTMLElement;
+          <span class="shrink-0 font-semibold tabular-nums"></span>
+          <span class="truncate text-sm text-gray-600 tabular-nums dark:text-gray-400"></span>
+          <span class="ml-auto shrink-0 text-xs text-gray-500"></span>`;
+        const [title, detail, when] = load.children as unknown as HTMLElement[];
         title.textContent = describeInput(e);
-        detail.textContent = [
-          e.unit !== "mi" && `${o.mi} /mi`,
-          e.unit !== "km" && `${o.km} /km`,
-          e.unit !== "mph" && `${o.mph} mph`,
-          e.unit !== "kmh" && `${o.kmh} km/h`,
-          `Marathon ${o.full}`,
-        ]
-          .filter(Boolean)
-          .join(" · ");
-        when.textContent = new Date(e.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+        // The two numbers you'd most likely want next to the one you typed.
+        const related: Record<Unit, string[]> = {
+          mi: [`${o.km} /km`, `${o.mph} mph`],
+          km: [`${o.mi} /mi`, `${o.kmh} km/h`],
+          mph: [`${o.mi} /mi`, `${o.km} /km`],
+          kmh: [`${o.km} /km`, `${o.mi} /mi`],
+        };
+        detail.textContent = related[e.unit].join(" · ");
+        when.textContent = whenLabel(e.at);
         load.setAttribute("aria-label", `Load ${describeInput(e)}`);
         load.addEventListener("click", () => {
           secPerKm = e.secPerKm;
@@ -346,7 +349,7 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
         const del = document.createElement("button");
         del.type = "button";
         del.className =
-          "flex size-11 shrink-0 items-center justify-center rounded-full text-2xl text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700";
+          "flex size-10 shrink-0 items-center justify-center rounded-full text-xl text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700";
         del.textContent = "×";
         del.setAttribute("aria-label", `Delete ${describeInput(e)}`);
         del.addEventListener("click", () => {
@@ -397,11 +400,17 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
 
   saveBtn.addEventListener("click", () => {
     if (!secPerKm) return;
-    history.unshift({ id: crypto.randomUUID(), at: Date.now(), unit, secPerKm });
+    // Saving the same value twice in a row just bumps its time.
+    const top = history[0];
+    if (top && top.unit === unit && describeInput(top) === describeInput({ unit, secPerKm })) {
+      top.at = Date.now();
+    } else {
+      history.unshift({ id: crypto.randomUUID(), at: Date.now(), unit, secPerKm });
+    }
     storeHistory(history);
     renderHistory();
     saveBtn.textContent = "Saved ✓";
-    setTimeout(() => (saveBtn.textContent = "Save to history"), 1200);
+    setTimeout(() => (saveBtn.textContent = "Save"), 1200);
   });
 
   clearBtn.addEventListener("click", () => {
