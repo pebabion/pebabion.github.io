@@ -7,14 +7,13 @@ const units = [
   { id: "mph", label: "mph" },
   { id: "kmh", label: "km/h" },
 ];
-// Everything below the input sits in one 3-column grid so it fits on a phone
-// screen without scrolling. The tile for the input unit is hidden, leaving 9.
+// Everything below the input sits in one 4-column grid so it fits on a phone
+// screen without scrolling. The tile for the input unit is hidden, leaving 8.
 const results = [
   { id: "mi", label: "min/mi" },
   { id: "km", label: "min/km" },
   { id: "mph", label: "mph" },
   { id: "kmh", label: "km/h" },
-  { id: "ms", label: "m/s" },
   { id: "lap", label: "400 m lap" },
   { id: "5k", label: "5K", race: true },
   { id: "10k", label: "10K", race: true },
@@ -80,18 +79,18 @@ const field =
       </div>
     </section>
 
-    <section class="mt-3 grid grid-cols-3 gap-2" aria-label="Results" aria-live="polite">
+    <section class="mt-3 grid grid-cols-4 gap-1.5 sm:gap-2" aria-label="Results" aria-live="polite">
       {
         results.map((r) => (
           <div
             data-result={r.id}
             class:list={[
-              "rounded-lg border bg-white px-2 py-1.5 dark:bg-secondary-dark-bg",
+              "min-w-0 rounded-lg border bg-white px-1.5 py-1.5 dark:bg-secondary-dark-bg",
               r.race ? "border-green-600/60" : "border-gray-200 dark:border-gray-700",
             ]}
           >
             <span class="block text-xs text-gray-500 dark:text-gray-400">{r.label}</span>
-            <strong data-out={r.id} class="text-lg tabular-nums">–</strong>
+            <strong data-out={r.id} class="text-base tabular-nums sm:text-lg">–</strong>
           </div>
         ))
       }
@@ -172,7 +171,6 @@ const field =
       km: clock(spk),
       mph: (kmh(spk) / KM_PER_MI).toFixed(2),
       kmh: kmh(spk).toFixed(2),
-      ms: (1000 / spk).toFixed(2),
       lap: clock(spk * 0.4),
     };
     for (const [id, km] of Object.entries(RACES_KM)) out[id] = clock(spk * km);
