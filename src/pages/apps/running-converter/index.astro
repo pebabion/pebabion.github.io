@@ -20,23 +20,31 @@ const results = [
   { id: "half", label: "Half", race: true },
   { id: "full", label: "Marathon", race: true },
 ];
-const field =
-  "w-full min-w-0 rounded-lg border-0 bg-white/15 px-3 py-1 text-4xl font-bold tabular-nums text-white placeholder:text-white/40 focus:bg-white/25 focus:outline-none";
+// Inputs read as one big centred number, not as form boxes.
+const digits =
+  "min-w-0 rounded-lg bg-transparent py-1 text-6xl font-bold tabular-nums text-white placeholder:text-white/40 focus:bg-white/15 focus:outline-none";
+const raised = "touch-manipulation select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white";
 ---
 
 <Base title="Running converter · pebabion" description="Convert a running pace or speed into every other unit, with race finish times.">
   <div class="mx-auto max-w-xl pb-12">
     <h1 class="mb-3 text-2xl font-semibold sm:mt-8">Running converter</h1>
 
-    <section class="rounded-2xl bg-green-700 p-3 text-white dark:bg-green-800" aria-label="Input">
-      <div class="grid grid-cols-4 gap-1 rounded-xl bg-black/20 p-1" role="radiogroup" aria-label="Input unit">
+    <section
+      class="rounded-3xl bg-gradient-to-b from-green-600 to-green-800 p-3 text-white shadow-lg shadow-green-900/20 dark:from-green-700 dark:to-green-900"
+      aria-label="Input"
+    >
+      <div class="grid grid-cols-4 gap-1 rounded-2xl bg-black/20 p-1" role="radiogroup" aria-label="Input unit">
         {
           units.map((u) => (
             <button
               type="button"
               role="radio"
               data-unit={u.id}
-              class="min-h-10 rounded-lg text-base font-semibold text-white/80 aria-checked:bg-white aria-checked:text-green-800"
+              class:list={[
+                "min-h-10 rounded-xl text-base font-semibold text-white/75 transition-colors aria-checked:bg-white aria-checked:text-green-800 aria-checked:shadow",
+                raised,
+              ]}
             >
               {u.label}
             </button>
@@ -44,53 +52,60 @@ const field =
         }
       </div>
 
-      <div id="pace-input" class="mt-3 flex items-center gap-2">
-        <input id="min" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="8" aria-label="Minutes" class={field} />
-        <span class="text-4xl font-bold">:</span>
-        <input id="sec" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="30" aria-label="Seconds" class={field} />
-      </div>
-      <div id="speed-input" class="mt-3" hidden>
-        <input id="speed" type="text" inputmode="decimal" placeholder="7.0" aria-label="Speed" class={field} />
+      <div class="flex items-baseline justify-center py-2">
+        <div id="pace-input" class="flex items-baseline">
+          <input id="min" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="8" aria-label="Minutes" class:list={[digits, "w-[2.3ch] pr-1 text-right"]} />
+          <span class="text-5xl font-bold text-white/80">:</span>
+          <input id="sec" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="30" aria-label="Seconds" class:list={[digits, "w-[2.3ch] pl-1 text-left"]} />
+        </div>
+        <div id="speed-input" hidden>
+          <input id="speed" type="text" inputmode="decimal" placeholder="7.0" aria-label="Speed" class:list={[digits, "w-[4.6ch] text-center"]} />
+        </div>
+        <span id="unit-suffix" class="ml-2 text-xl font-semibold text-white/70">/mi</span>
       </div>
 
       <!-- One-tap adjustments; hold a button to keep stepping. -->
-      <div class="mt-3 grid grid-cols-4 gap-2" aria-label="Adjust">
+      <div class="grid grid-cols-4 gap-2" aria-label="Adjust">
         {
           [-2, -1, 1, 2].map((n) => (
             <button
               type="button"
               data-step={n}
-              class="min-h-12 touch-manipulation rounded-xl bg-white/15 text-xl font-bold tabular-nums select-none active:bg-white/35"
+              class:list={[
+                "min-h-12 rounded-2xl text-lg font-bold tabular-nums transition-colors active:bg-white/40",
+                n < 0 ? "bg-black/15" : "bg-white/20",
+                raised,
+              ]}
             />
           ))
         }
       </div>
+
       <!-- Relative drag: the value moves with your finger, not to where you touch. -->
       <div
         id="scrub"
         role="slider"
         tabindex="0"
         aria-label="Swipe to change"
-        class="scrub mt-3 flex h-12 cursor-ew-resize items-center justify-between rounded-xl px-2 text-lg font-bold text-white/60 select-none"
+        class:list={["scrub relative mt-2 h-12 cursor-ew-resize rounded-2xl bg-black/20", raised]}
       >
-        <span class="rounded-md bg-green-900 px-2" aria-hidden="true">‹</span>
-        <span class="rounded-md bg-green-900 px-2 py-0.5 text-sm font-semibold tracking-wide uppercase" aria-hidden="true">swipe</span>
-        <span class="rounded-md bg-green-900 px-2" aria-hidden="true">›</span>
+        <span class="pointer-events-none absolute inset-y-2 left-1/2 w-1 -translate-x-1/2 rounded-full bg-white shadow" aria-hidden="true"></span>
+        <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-lg font-bold text-white/50" aria-hidden="true">‹</span>
+        <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-lg font-bold text-white/50" aria-hidden="true">›</span>
       </div>
     </section>
 
     <section class="mt-3 grid grid-cols-4 gap-1.5 sm:gap-2" aria-label="Results" aria-live="polite">
       {
         results.map((r) => (
-          <div
-            data-result={r.id}
-            class:list={[
-              "min-w-0 rounded-lg border bg-white px-1.5 py-1.5 dark:bg-secondary-dark-bg",
-              r.race ? "border-green-600/60" : "border-gray-200 dark:border-gray-700",
-            ]}
-          >
-            <span class="block text-xs text-gray-500 dark:text-gray-400">{r.label}</span>
-            <strong data-out={r.id} class="text-base tabular-nums sm:text-lg">–</strong>
+          <div data-result={r.id} class="min-w-0 rounded-xl bg-white px-1 py-2 text-center shadow-sm dark:bg-white/5 dark:shadow-none">
+            <span class="block text-xs font-medium text-gray-500 dark:text-gray-400">{r.label}</span>
+            <strong
+              data-out={r.id}
+              class:list={["text-base tabular-nums sm:text-lg", r.race && "text-green-700 dark:text-green-400"]}
+            >
+              –
+            </strong>
           </div>
         ))
       }
@@ -100,7 +115,7 @@ const field =
       id="save"
       type="button"
       disabled
-      class="mt-3 min-h-12 w-full rounded-xl bg-green-600 text-lg font-semibold text-white hover:bg-green-700 disabled:opacity-40"
+      class="mt-3 min-h-12 w-full rounded-2xl bg-green-600 text-lg font-semibold text-white transition-colors hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 disabled:opacity-40 dark:focus-visible:ring-offset-main-dark-bg"
     >
       Save to history
     </button>
@@ -258,6 +273,7 @@ const field =
     for (const b of unitButtons) b.setAttribute("aria-checked", String(b.dataset.unit === unit));
     $("pace-input").hidden = !isPace(unit);
     $("speed-input").hidden = isPace(unit);
+    $("unit-suffix").textContent = { mi: "/mi", km: "/km", mph: "mph", kmh: "km/h" }[unit];
 
     const c = STEPS[unit];
     const sign = (n: number) => (n < 0 ? "−" : "+");
@@ -302,10 +318,13 @@ const field =
         load.type = "button";
         load.className = "min-h-14 flex-1 py-2 text-left";
         load.innerHTML = `
-          <span class="block font-semibold tabular-nums"></span>
-          <span class="block text-sm text-gray-600 tabular-nums dark:text-gray-400"></span>
-          <span class="block text-xs text-gray-500"></span>`;
-        const [title, detail, when] = load.children as unknown as HTMLElement[];
+          <span class="flex items-baseline justify-between gap-2">
+            <span class="font-semibold tabular-nums"></span>
+            <span class="shrink-0 text-xs text-gray-500"></span>
+          </span>
+          <span class="block text-sm text-gray-600 tabular-nums dark:text-gray-400"></span>`;
+        const [title, when] = load.children[0].children as unknown as HTMLElement[];
+        const detail = load.children[1] as HTMLElement;
         title.textContent = describeInput(e);
         detail.textContent = [
           e.unit !== "mi" && `${o.mi} /mi`,
@@ -427,7 +446,7 @@ const field =
     if (!drag) return;
     const dx = ev.clientX - drag.x;
     tickOffset = drag.offset + dx;
-    scrub.style.backgroundPositionX = `${tickOffset}px`;
+    scrub.style.setProperty("--tick-x", `${tickOffset}px`);
     const steps = Math.trunc(dx / PX_PER_STEP);
     if (steps !== drag.steps) {
       drag.steps = steps;
@@ -456,20 +475,21 @@ const field =
 
 <style>
   /* Tick marks, one per small step, that slide as you swipe. */
+  /* Tick marks, one per small step, that slide as you swipe and fade out at
+     the edges. JS moves them through --tick-x. */
   .scrub {
-    background-color: rgb(0 0 0 / 0.2);
-    background-image: repeating-linear-gradient(
-      to right,
-      rgb(255 255 255 / 0.35) 0 2px,
-      transparent 2px 25px
-    );
-    background-size: 25px 40%;
-    background-repeat: repeat-x;
-    background-position-y: center;
     touch-action: none;
   }
-  .scrub:focus-visible {
-    outline: 2px solid white;
-    outline-offset: 2px;
+  .scrub::before {
+    content: "";
+    position: absolute;
+    inset: 0.75rem 0;
+    background-image: repeating-linear-gradient(
+      to right,
+      rgb(255 255 255 / 0.45) 0 2px,
+      transparent 2px 25px
+    );
+    background-position-x: var(--tick-x, 0px);
+    mask-image: linear-gradient(to right, transparent, black 25%, black 75%, transparent);
   }
 </style>
