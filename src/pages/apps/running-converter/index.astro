@@ -118,10 +118,12 @@ const field =
   const RACES_KM = { "5k": 5, "10k": 10, half: 21.0975, full: 42.195 };
   // Step sizes and slider range, in the unit's own terms (seconds or speed).
   const CONTROLS: Record<Unit, { small: number; big: number; min: number; max: number }> = {
-    mi: { small: 5, big: 15, min: 240, max: 900 },
-    km: { small: 5, big: 15, min: 150, max: 570 },
-    mph: { small: 0.1, big: 0.5, min: 4, max: 15 },
-    kmh: { small: 0.1, big: 0.5, min: 6, max: 24 },
+    // Slider covers everyday running, about 6:00–13:00 /mi. The step buttons
+    // and typing still reach any value.
+    mi: { small: 5, big: 15, min: 360, max: 780 },
+    km: { small: 5, big: 15, min: 225, max: 485 },
+    mph: { small: 0.1, big: 0.5, min: 4.6, max: 10 },
+    kmh: { small: 0.1, big: 0.5, min: 7.4, max: 16 },
   };
   const LAST_KEY = "running-converter:last:v1";
   const STORAGE_KEY = "running-converter:history:v1";
