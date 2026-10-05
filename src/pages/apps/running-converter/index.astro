@@ -1,0 +1,326 @@
+---
+import Base from "../../../layouts/Base.astro";
+
+const units = [
+  { id: "mi", label: "min/mi" },
+  { id: "km", label: "min/km" },
+  { id: "mph", label: "mph" },
+  { id: "kmh", label: "km/h" },
+];
+const results = [
+  { id: "mi", label: "Pace per mile" },
+  { id: "km", label: "Pace per km" },
+  { id: "mph", label: "Miles per hour" },
+  { id: "kmh", label: "Km per hour" },
+  { id: "ms", label: "Metres per second" },
+  { id: "lap", label: "400 m lap" },
+];
+const races = [
+  { id: "5k", label: "5K" },
+  { id: "10k", label: "10K" },
+  { id: "half", label: "Half" },
+  { id: "full", label: "Marathon" },
+];
+const field =
+  "w-full min-w-0 rounded-lg border-0 bg-white/15 px-3 py-2 text-5xl font-bold tabular-nums text-white placeholder:text-white/40 focus:bg-white/25 focus:outline-none";
+---
+
+<Base title="Running converter · pebabion" description="Convert a running pace or speed into every other unit, with race finish times.">
+  <div class="mx-auto max-w-xl pb-12">
+    <a href="/apps/" class="mt-4 inline-block py-2 text-base text-green-600 hover:underline">← Apps</a>
+    <h1 class="mb-1 text-3xl font-semibold">Running converter</h1>
+    <p class="mb-5 text-base text-gray-600 dark:text-gray-400">Pick a unit, type a value, get everything else.</p>
+
+    <section class="rounded-2xl bg-green-700 p-4 text-white dark:bg-green-800" aria-label="Input">
+      <div class="grid grid-cols-4 gap-1 rounded-xl bg-black/20 p-1" role="radiogroup" aria-label="Input unit">
+        {
+          units.map((u) => (
+            <button
+              type="button"
+              role="radio"
+              data-unit={u.id}
+              class="min-h-11 rounded-lg text-base font-semibold text-white/80 aria-checked:bg-white aria-checked:text-green-800"
+            >
+              {u.label}
+            </button>
+          ))
+        }
+      </div>
+
+      <div id="pace-input" class="mt-4 flex items-center gap-2">
+        <input id="min" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="8" aria-label="Minutes" class={field} />
+        <span class="text-5xl font-bold">:</span>
+        <input id="sec" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="30" aria-label="Seconds" class={field} />
+      </div>
+      <div id="speed-input" class="mt-4" hidden>
+        <input id="speed" type="text" inputmode="decimal" placeholder="7.0" aria-label="Speed" class={field} />
+      </div>
+      <p id="unit-hint" class="mt-2 text-base text-white/80">minutes : seconds per mile</p>
+    </section>
+
+    <section class="mt-4 grid grid-cols-2 gap-3" aria-label="Results" aria-live="polite">
+      {
+        results.map((r) => (
+          <div data-result={r.id} class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-secondary-dark-bg">
+            <span class="block text-sm text-gray-500 dark:text-gray-400">{r.label}</span>
+            <strong data-out={r.id} class="text-2xl tabular-nums">–</strong>
+          </div>
+        ))
+      }
+    </section>
+
+    <h2 class="mt-6 mb-2 text-lg font-semibold">Finish times</h2>
+    <section class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Finish times">
+      {
+        races.map((r) => (
+          <div class="border-t-4 border-green-600 pt-2 text-center">
+            <span class="block text-sm text-gray-500 dark:text-gray-400">{r.label}</span>
+            <strong data-out={r.id} class="text-xl tabular-nums">–</strong>
+          </div>
+        ))
+      }
+    </section>
+
+    <button
+      id="save"
+      type="button"
+      disabled
+      class="mt-6 min-h-12 w-full rounded-xl bg-green-600 text-lg font-semibold text-white hover:bg-green-700 disabled:opacity-40"
+    >
+      Save to history
+    </button>
+
+    <section class="mt-8" aria-labelledby="history-title">
+      <div class="mb-2 flex items-center justify-between">
+        <h2 id="history-title" class="text-lg font-semibold">History</h2>
+        <button id="clear" type="button" hidden class="min-h-11 px-2 text-base text-red-600 hover:underline dark:text-red-400">
+          Clear all
+        </button>
+      </div>
+      <p id="history-empty" class="text-base text-gray-500 dark:text-gray-400">
+        Saved conversions show up here. They stay on this device only.
+      </p>
+      <ul id="history" class="divide-y divide-gray-200 dark:divide-gray-700"></ul>
+    </section>
+  </div>
+</Base>
+
+<script>
+  type Unit = "mi" | "km" | "mph" | "kmh";
+  type Entry = { id: string; at: number; unit: Unit; secPerKm: number };
+
+  const KM_PER_MI = 1.609344;
+  const RACES_KM = { "5k": 5, "10k": 10, half: 21.0975, full: 42.195 };
+  const HINTS: Record<Unit, string> = {
+    mi: "minutes : seconds per mile",
+    km: "minutes : seconds per km",
+    mph: "miles per hour",
+    kmh: "kilometres per hour",
+  };
+  const STORAGE_KEY = "running-converter:history:v1";
+  const MAX_HISTORY = 200;
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const minEl = $<HTMLInputElement>("min");
+  const secEl = $<HTMLInputElement>("sec");
+  const speedEl = $<HTMLInputElement>("speed");
+  const saveBtn = $<HTMLButtonElement>("save");
+  const clearBtn = $<HTMLButtonElement>("clear");
+  const historyEl = $<HTMLUListElement>("history");
+  const unitButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-unit]")];
+
+  let unit: Unit = "mi";
+  let secPerKm: number | null = null;
+
+  // Formatting
+
+  function clock(totalSec: number) {
+    const s = Math.round(totalSec);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const ss = String(s % 60).padStart(2, "0");
+    return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+  }
+  const kmh = (spk: number) => 3600 / spk;
+
+  function outputs(spk: number): Record<string, string> {
+    const out: Record<string, string> = {
+      mi: clock(spk * KM_PER_MI),
+      km: clock(spk),
+      mph: (kmh(spk) / KM_PER_MI).toFixed(2),
+      kmh: kmh(spk).toFixed(2),
+      ms: (1000 / spk).toFixed(2),
+      lap: clock(spk * 0.4),
+    };
+    for (const [id, km] of Object.entries(RACES_KM)) out[id] = clock(spk * km);
+    return out;
+  }
+
+  function describeInput(e: Pick<Entry, "unit" | "secPerKm">) {
+    const o = outputs(e.secPerKm);
+    const trim = (v: string) => String(Number(v));
+    return { mi: `${o.mi} /mi`, km: `${o.km} /km`, mph: `${trim(o.mph)} mph`, kmh: `${trim(o.kmh)} km/h` }[e.unit];
+  }
+
+  // Input → seconds per km
+
+  function readInput(): number | null {
+    if (unit === "mi" || unit === "km") {
+      const m = Number(minEl.value || 0);
+      const s = Number(secEl.value || 0);
+      if (!Number.isFinite(m) || !Number.isFinite(s) || s >= 60) return null;
+      const sec = m * 60 + s;
+      if (sec <= 0) return null;
+      return unit === "mi" ? sec / KM_PER_MI : sec;
+    }
+    const v = Number(speedEl.value.replace(",", "."));
+    if (!Number.isFinite(v) || v <= 0) return null;
+    return unit === "mph" ? 3600 / (v * KM_PER_MI) : 3600 / v;
+  }
+
+  function writeInput(spk: number) {
+    if (unit === "mi" || unit === "km") {
+      const total = Math.round(unit === "mi" ? spk * KM_PER_MI : spk);
+      minEl.value = String(Math.floor(total / 60));
+      secEl.value = String(total % 60).padStart(2, "0");
+    } else {
+      const v = unit === "mph" ? kmh(spk) / KM_PER_MI : kmh(spk);
+      speedEl.value = String(Number(v.toFixed(2)));
+    }
+  }
+
+  function render() {
+    const o = secPerKm ? outputs(secPerKm) : null;
+    document.querySelectorAll<HTMLElement>("[data-out]").forEach((el) => {
+      el.textContent = o ? o[el.dataset.out!] : "–";
+    });
+    // Hide the result that just repeats the input.
+    document.querySelectorAll<HTMLElement>("[data-result]").forEach((el) => {
+      el.hidden = el.dataset.result === unit;
+    });
+    saveBtn.disabled = !secPerKm;
+  }
+
+  function setUnit(next: Unit) {
+    unit = next;
+    for (const b of unitButtons) b.setAttribute("aria-checked", String(b.dataset.unit === unit));
+    const isPace = unit === "mi" || unit === "km";
+    $("pace-input").hidden = !isPace;
+    $("speed-input").hidden = isPace;
+    $("unit-hint").textContent = HINTS[unit];
+    if (secPerKm) writeInput(secPerKm);
+    render();
+  }
+
+  // History, kept in this browser only
+
+  function loadHistory(): Entry[] {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function storeHistory(entries: Entry[]) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(0, MAX_HISTORY)));
+    } catch {
+      // Storage blocked or full; history just won't persist.
+    }
+  }
+
+  let history = loadHistory();
+
+  function renderHistory() {
+    historyEl.replaceChildren(
+      ...history.map((e) => {
+        const o = outputs(e.secPerKm);
+        const li = document.createElement("li");
+        li.className = "flex items-center gap-2";
+
+        const load = document.createElement("button");
+        load.type = "button";
+        load.className = "min-h-14 flex-1 py-2 text-left";
+        load.innerHTML = `
+          <span class="block font-semibold tabular-nums"></span>
+          <span class="block text-sm text-gray-600 tabular-nums dark:text-gray-400"></span>
+          <span class="block text-xs text-gray-500"></span>`;
+        const [title, detail, when] = load.children as unknown as HTMLElement[];
+        title.textContent = describeInput(e);
+        detail.textContent = [
+          e.unit !== "mi" && `${o.mi} /mi`,
+          e.unit !== "km" && `${o.km} /km`,
+          e.unit !== "mph" && `${o.mph} mph`,
+          e.unit !== "kmh" && `${o.kmh} km/h`,
+          `Marathon ${o.full}`,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        when.textContent = new Date(e.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+        load.setAttribute("aria-label", `Load ${describeInput(e)}`);
+        load.addEventListener("click", () => {
+          secPerKm = e.secPerKm;
+          setUnit(e.unit);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className =
+          "flex size-11 shrink-0 items-center justify-center rounded-full text-2xl text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700";
+        del.textContent = "×";
+        del.setAttribute("aria-label", `Delete ${describeInput(e)}`);
+        del.addEventListener("click", () => {
+          history = history.filter((h) => h.id !== e.id);
+          storeHistory(history);
+          renderHistory();
+        });
+
+        li.append(load, del);
+        return li;
+      }),
+    );
+    $("history-empty").hidden = history.length > 0;
+    clearBtn.hidden = history.length === 0;
+  }
+
+  // Wiring
+
+  for (const b of unitButtons) b.addEventListener("click", () => setUnit(b.dataset.unit as Unit));
+  for (const el of [minEl, secEl, speedEl]) {
+    el.addEventListener("input", () => {
+      secPerKm = readInput();
+      render();
+    });
+  }
+  // Jump to seconds once the minutes look complete.
+  minEl.addEventListener("input", () => {
+    if (minEl.value.length === 2) secEl.focus();
+  });
+  for (const el of [minEl, secEl, speedEl]) {
+    el.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") saveBtn.click();
+    });
+  }
+
+  saveBtn.addEventListener("click", () => {
+    if (!secPerKm) return;
+    history.unshift({ id: crypto.randomUUID(), at: Date.now(), unit, secPerKm });
+    storeHistory(history);
+    renderHistory();
+    saveBtn.textContent = "Saved ✓";
+    setTimeout(() => (saveBtn.textContent = "Save to history"), 1200);
+  });
+
+  clearBtn.addEventListener("click", () => {
+    if (!confirm(`Delete all ${history.length} saved conversions?`)) return;
+    history = [];
+    storeHistory(history);
+    renderHistory();
+  });
+
+  setUnit("mi");
+  renderHistory();
+</script>
