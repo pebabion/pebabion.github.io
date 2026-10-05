@@ -364,6 +364,19 @@ const field =
       render();
     });
   }
+  // Select the whole value on tap so typing replaces it. iOS ignores select()
+  // during focus, so defer it, and keep a mouse click from clearing it.
+  for (const el of [minEl, secEl, speedEl]) {
+    let justFocused = false;
+    el.addEventListener("focus", () => {
+      justFocused = true;
+      setTimeout(() => el.setSelectionRange(0, el.value.length), 0);
+    });
+    el.addEventListener("mouseup", (ev) => {
+      if (justFocused) ev.preventDefault();
+      justFocused = false;
+    });
+  }
   // Jump to seconds once the minutes look complete.
   minEl.addEventListener("input", () => {
     if (minEl.value.length === 2) secEl.focus();
