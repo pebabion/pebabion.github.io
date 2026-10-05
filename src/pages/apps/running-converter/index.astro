@@ -66,7 +66,18 @@ const field =
           ))
         }
       </div>
-      <input id="slider" type="range" aria-label="Drag to change" class="slider mt-1 w-full" />
+      <!-- Relative drag: the value moves with your finger, not to where you touch. -->
+      <div
+        id="scrub"
+        role="slider"
+        tabindex="0"
+        aria-label="Swipe to change"
+        class="scrub mt-3 flex h-12 cursor-ew-resize items-center justify-between rounded-xl px-2 text-lg font-bold text-white/60 select-none"
+      >
+        <span class="rounded-md bg-green-900 px-2" aria-hidden="true">‹</span>
+        <span class="rounded-md bg-green-900 px-2 py-0.5 text-sm font-semibold tracking-wide uppercase" aria-hidden="true">swipe</span>
+        <span class="rounded-md bg-green-900 px-2" aria-hidden="true">›</span>
+      </div>
     </section>
 
     <section class="mt-3 grid grid-cols-3 gap-2" aria-label="Results" aria-live="polite">
@@ -116,15 +127,16 @@ const field =
 
   const KM_PER_MI = 1.609344;
   const RACES_KM = { "5k": 5, "10k": 10, half: 21.0975, full: 42.195 };
-  // Step sizes and slider range, in the unit's own terms (seconds or speed).
-  const CONTROLS: Record<Unit, { small: number; big: number; min: number; max: number }> = {
-    // Slider covers everyday running, about 6:00–13:00 /mi. The step buttons
-    // and typing still reach any value.
-    mi: { small: 5, big: 15, min: 360, max: 780 },
-    km: { small: 5, big: 15, min: 225, max: 485 },
-    mph: { small: 0.1, big: 0.5, min: 4.6, max: 10 },
-    kmh: { small: 0.1, big: 0.5, min: 7.4, max: 16 },
+  // Step sizes in the unit's own terms (seconds or speed).
+  const STEPS: Record<Unit, { small: number; big: number }> = {
+    mi: { small: 5, big: 15 },
+    km: { small: 5, big: 15 },
+    mph: { small: 0.1, big: 0.5 },
+    kmh: { small: 0.1, big: 0.5 },
   };
+  // Swipe distance for one small step. Higher is less sensitive.
+  const PX_PER_STEP = 25;
+  const DEFAULT_SEC_PER_KM = 540 / KM_PER_MI; // 9:00 /mi
   const LAST_KEY = "running-converter:last:v1";
   const STORAGE_KEY = "running-converter:history:v1";
   const MAX_HISTORY = 200;
@@ -136,7 +148,7 @@ const field =
   const saveBtn = $<HTMLButtonElement>("save");
   const clearBtn = $<HTMLButtonElement>("clear");
   const historyEl = $<HTMLUListElement>("history");
-  const slider = $<HTMLInputElement>("slider");
+  const scrub = $<HTMLDivElement>("scrub");
   const unitButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-unit]")];
   const stepButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-step]")];
 
@@ -208,9 +220,9 @@ const field =
     }
   }
 
-  // Set a new value from the steppers or slider: update the input too.
+  // Set a new value from the steppers or swipe: update the input too.
   function setValue(v: number) {
-    const { small } = CONTROLS[unit];
+    const { small } = STEPS[unit];
     v = Math.max(small, Math.round(v / small) * small);
     secPerKm = fromUnit(v);
     writeInput(secPerKm);
@@ -218,8 +230,8 @@ const field =
   }
 
   function step(n: number) {
-    const { small, big } = CONTROLS[unit];
-    const current = secPerKm ? toUnit(secPerKm) : CONTROLS[unit].min;
+    const { small, big } = STEPS[unit];
+    const current = toUnit(secPerKm ?? DEFAULT_SEC_PER_KM);
     setValue(current + Math.sign(n) * (Math.abs(n) === 2 ? big : small));
   }
 
@@ -234,7 +246,7 @@ const field =
     });
     saveBtn.disabled = !secPerKm;
     if (secPerKm) {
-      slider.value = String(toUnit(secPerKm));
+      scrub.setAttribute("aria-valuetext", isPace(unit) ? `${clock(toUnit(secPerKm))} per ${unit}` : `${toUnit(secPerKm).toFixed(1)} ${unit}`);
       try {
         localStorage.setItem(LAST_KEY, JSON.stringify({ unit, secPerKm }));
       } catch {
@@ -249,14 +261,13 @@ const field =
     $("pace-input").hidden = !isPace(unit);
     $("speed-input").hidden = isPace(unit);
 
-    const c = CONTROLS[unit];
+    const c = STEPS[unit];
     const sign = (n: number) => (n < 0 ? "−" : "+");
     for (const b of stepButtons) {
       const n = Number(b.dataset.step);
       const size = Math.abs(n) === 2 ? c.big : c.small;
       b.textContent = `${sign(n)}${isPace(unit) ? `${size}s` : size}`;
     }
-    Object.assign(slider, { min: c.min, max: c.max, step: c.small });
     if (secPerKm) writeInput(secPerKm);
     render();
   }
@@ -406,7 +417,32 @@ const field =
     b.addEventListener("contextmenu", (ev) => ev.preventDefault());
   }
 
-  slider.addEventListener("input", () => setValue(Number(slider.value)));
+  // Swipe right to raise the number, left to lower it. The tick marks slide
+  // with the finger so the strip feels like a wheel.
+  let tickOffset = 0;
+  let drag: { x: number; start: number; steps: number; offset: number } | null = null;
+  scrub.addEventListener("pointerdown", (ev) => {
+    scrub.setPointerCapture(ev.pointerId);
+    drag = { x: ev.clientX, start: toUnit(secPerKm ?? DEFAULT_SEC_PER_KM), steps: 0, offset: tickOffset };
+  });
+  scrub.addEventListener("pointermove", (ev) => {
+    if (!drag) return;
+    const dx = ev.clientX - drag.x;
+    tickOffset = drag.offset + dx;
+    scrub.style.backgroundPositionX = `${tickOffset}px`;
+    const steps = Math.trunc(dx / PX_PER_STEP);
+    if (steps !== drag.steps) {
+      drag.steps = steps;
+      setValue(drag.start + steps * STEPS[unit].small);
+    }
+  });
+  for (const type of ["pointerup", "pointercancel"]) scrub.addEventListener(type, () => (drag = null));
+  scrub.addEventListener("keydown", (ev) => {
+    if (ev.key === "ArrowRight" || ev.key === "ArrowUp") step(1);
+    else if (ev.key === "ArrowLeft" || ev.key === "ArrowDown") step(-1);
+    else return;
+    ev.preventDefault();
+  });
 
   // Reopen where you left off; first visit starts at 9:00 /mi.
   let last: { unit?: Unit; secPerKm?: number } = {};
@@ -415,43 +451,27 @@ const field =
   } catch {
     // Use the default.
   }
-  secPerKm = last.secPerKm && last.secPerKm > 0 ? last.secPerKm : 540 / KM_PER_MI;
-  setUnit(last.unit && last.unit in CONTROLS ? last.unit : "mi");
+  secPerKm = last.secPerKm && last.secPerKm > 0 ? last.secPerKm : DEFAULT_SEC_PER_KM;
+  setUnit(last.unit && last.unit in STEPS ? last.unit : "mi");
   renderHistory();
 </script>
 
 <style>
-  /* A thumb big enough to grab mid-run. */
-  .slider {
-    appearance: none;
-    height: 2.75rem;
-    background: transparent;
+  /* Tick marks, one per small step, that slide as you swipe. */
+  .scrub {
+    background-color: rgb(0 0 0 / 0.2);
+    background-image: repeating-linear-gradient(
+      to right,
+      rgb(255 255 255 / 0.35) 0 2px,
+      transparent 2px 25px
+    );
+    background-size: 25px 40%;
+    background-repeat: repeat-x;
+    background-position-y: center;
     touch-action: none;
   }
-  .slider::-webkit-slider-runnable-track {
-    height: 0.5rem;
-    border-radius: 9999px;
-    background: rgb(255 255 255 / 0.3);
-  }
-  .slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 2rem;
-    height: 2rem;
-    margin-top: -0.75rem;
-    border-radius: 9999px;
-    background: white;
-    box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
-  }
-  .slider::-moz-range-track {
-    height: 0.5rem;
-    border-radius: 9999px;
-    background: rgb(255 255 255 / 0.3);
-  }
-  .slider::-moz-range-thumb {
-    width: 2rem;
-    height: 2rem;
-    border: 0;
-    border-radius: 9999px;
-    background: white;
+  .scrub:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
   }
 </style>
