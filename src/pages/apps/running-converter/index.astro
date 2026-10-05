@@ -92,7 +92,6 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
         role="slider"
         tabindex="0"
         aria-label="Swipe to change"
-        aria-describedby="scrub-hint"
         class:list={["scrub relative mt-2 h-12 cursor-ew-resize rounded-2xl bg-black/20", raised]}
       >
         <!-- Shows the running change while you swipe, e.g. "+15s". -->
@@ -104,7 +103,6 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
         <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-lg font-bold text-white/50" aria-hidden="true">‹</span>
         <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-lg font-bold text-white/50" aria-hidden="true">›</span>
       </div>
-      <p id="scrub-hint" class="mt-1 text-center text-xs text-white/70">Swipe · each tick is 5s</p>
     </section>
 
     <section class="mt-3 grid grid-cols-4 gap-1.5 sm:gap-2" aria-label="Results" aria-live="polite">
@@ -240,7 +238,7 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
     $("pace-input").hidden = !isPace(unit);
     $("speed-input").hidden = isPace(unit);
     $("unit-suffix").textContent = { mi: "/mi", km: "/km", mph: "mph", kmh: "km/h" }[unit];
-    $("scrub-hint").textContent = `Swipe · each tick is ${formatDelta(1).slice(1)}`;
+    scrub.setAttribute("aria-label", `Swipe to change, ${formatDelta(1).slice(1)} per tick`);
 
     const c = STEPS[unit];
     const sign = (n: number) => (n < 0 ? "−" : "+");

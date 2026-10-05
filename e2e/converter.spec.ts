@@ -104,10 +104,9 @@ test("swiping moves 5 s per 25 px, relative to where you start", async ({ page }
   await page.mouse.up();
 });
 
-test("the swipe strip says what a tick is worth and shows the change while swiping", async ({ page }) => {
-  const hint = page.locator("#scrub-hint");
+test("the swipe strip shows the change while swiping", async ({ page }) => {
   const delta = page.locator("#scrub-delta");
-  await expect(hint).toHaveText("Swipe · each tick is 5s");
+  await expect(page.locator("#scrub")).toHaveAttribute("aria-label", "Swipe to change, 5s per tick");
   await expect(delta).toHaveCSS("opacity", "0");
 
   const box = (await page.locator("#scrub").boundingBox())!;
@@ -124,7 +123,7 @@ test("the swipe strip says what a tick is worth and shows the change while swipi
   await expect(delta).toHaveCSS("opacity", "0");
 
   await page.locator('[data-unit="mph"]').click();
-  await expect(hint).toHaveText("Swipe · each tick is 0.1 mph");
+  await expect(page.locator("#scrub")).toHaveAttribute("aria-label", "Swipe to change, 0.1 mph per tick");
 });
 
 test("arrow keys step the swipe strip", async ({ page }) => {
