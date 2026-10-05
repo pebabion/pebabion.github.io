@@ -56,6 +56,23 @@ const field =
         <input id="speed" type="text" inputmode="decimal" placeholder="7.0" aria-label="Speed" class={field} />
       </div>
       <p id="unit-hint" class="mt-2 text-base text-white/80">minutes : seconds per mile</p>
+
+      <!-- One-tap adjustments; hold a button to keep stepping. -->
+      <div class="mt-3 grid grid-cols-4 gap-2" aria-label="Adjust">
+        {
+          [-2, -1, 1, 2].map((n) => (
+            <button
+              type="button"
+              data-step={n}
+              class="min-h-14 touch-manipulation rounded-xl bg-white/15 text-xl font-bold tabular-nums select-none active:bg-white/35"
+            />
+          ))
+        }
+      </div>
+      <input id="slider" type="range" aria-label="Drag to change" class="slider mt-4 w-full" />
+      <div class="flex justify-between text-sm text-white/70">
+        <span id="slider-min"></span><span id="slider-max"></span>
+      </div>
     </section>
 
     <section class="mt-4 grid grid-cols-2 gap-3" aria-label="Results" aria-live="polite">
@@ -117,6 +134,14 @@ const field =
     mph: "miles per hour",
     kmh: "kilometres per hour",
   };
+  // Step sizes and slider range, in the unit's own terms (seconds or speed).
+  const CONTROLS: Record<Unit, { small: number; big: number; min: number; max: number }> = {
+    mi: { small: 5, big: 15, min: 240, max: 900 },
+    km: { small: 5, big: 15, min: 150, max: 570 },
+    mph: { small: 0.1, big: 0.5, min: 4, max: 15 },
+    kmh: { small: 0.1, big: 0.5, min: 6, max: 24 },
+  };
+  const LAST_KEY = "running-converter:last:v1";
   const STORAGE_KEY = "running-converter:history:v1";
   const MAX_HISTORY = 200;
 
@@ -127,7 +152,9 @@ const field =
   const saveBtn = $<HTMLButtonElement>("save");
   const clearBtn = $<HTMLButtonElement>("clear");
   const historyEl = $<HTMLUListElement>("history");
+  const slider = $<HTMLInputElement>("slider");
   const unitButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-unit]")];
+  const stepButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-step]")];
 
   let unit: Unit = "mi";
   let secPerKm: number | null = null;
@@ -165,28 +192,51 @@ const field =
   // Input → seconds per km
 
   function readInput(): number | null {
-    if (unit === "mi" || unit === "km") {
+    if (isPace(unit)) {
       const m = Number(minEl.value || 0);
       const s = Number(secEl.value || 0);
       if (!Number.isFinite(m) || !Number.isFinite(s) || s >= 60) return null;
       const sec = m * 60 + s;
-      if (sec <= 0) return null;
-      return unit === "mi" ? sec / KM_PER_MI : sec;
+      return sec > 0 ? fromUnit(sec) : null;
     }
     const v = Number(speedEl.value.replace(",", "."));
-    if (!Number.isFinite(v) || v <= 0) return null;
-    return unit === "mph" ? 3600 / (v * KM_PER_MI) : 3600 / v;
+    return Number.isFinite(v) && v > 0 ? fromUnit(v) : null;
+  }
+
+  const isPace = (u: Unit) => u === "mi" || u === "km";
+
+  // Seconds per mile/km for pace units, mph/km/h for speed units.
+  function toUnit(spk: number, u: Unit = unit) {
+    return { mi: spk * KM_PER_MI, km: spk, mph: kmh(spk) / KM_PER_MI, kmh: kmh(spk) }[u];
+  }
+  function fromUnit(v: number, u: Unit = unit) {
+    return { mi: v / KM_PER_MI, km: v, mph: 3600 / (v * KM_PER_MI), kmh: 3600 / v }[u];
   }
 
   function writeInput(spk: number) {
-    if (unit === "mi" || unit === "km") {
-      const total = Math.round(unit === "mi" ? spk * KM_PER_MI : spk);
+    const v = toUnit(spk);
+    if (isPace(unit)) {
+      const total = Math.round(v);
       minEl.value = String(Math.floor(total / 60));
       secEl.value = String(total % 60).padStart(2, "0");
     } else {
-      const v = unit === "mph" ? kmh(spk) / KM_PER_MI : kmh(spk);
       speedEl.value = String(Number(v.toFixed(2)));
     }
+  }
+
+  // Set a new value from the steppers or slider: update the input too.
+  function setValue(v: number) {
+    const { small } = CONTROLS[unit];
+    v = Math.max(small, Math.round(v / small) * small);
+    secPerKm = fromUnit(v);
+    writeInput(secPerKm);
+    render();
+  }
+
+  function step(n: number) {
+    const { small, big } = CONTROLS[unit];
+    const current = secPerKm ? toUnit(secPerKm) : CONTROLS[unit].min;
+    setValue(current + Math.sign(n) * (Math.abs(n) === 2 ? big : small));
   }
 
   function render() {
@@ -199,15 +249,34 @@ const field =
       el.hidden = el.dataset.result === unit;
     });
     saveBtn.disabled = !secPerKm;
+    if (secPerKm) {
+      slider.value = String(toUnit(secPerKm));
+      try {
+        localStorage.setItem(LAST_KEY, JSON.stringify({ unit, secPerKm }));
+      } catch {
+        // Not critical.
+      }
+    }
   }
 
   function setUnit(next: Unit) {
     unit = next;
     for (const b of unitButtons) b.setAttribute("aria-checked", String(b.dataset.unit === unit));
-    const isPace = unit === "mi" || unit === "km";
-    $("pace-input").hidden = !isPace;
-    $("speed-input").hidden = isPace;
+    $("pace-input").hidden = !isPace(unit);
+    $("speed-input").hidden = isPace(unit);
     $("unit-hint").textContent = HINTS[unit];
+
+    const c = CONTROLS[unit];
+    const label = (v: number) => (isPace(unit) ? clock(v) : String(v));
+    const sign = (n: number) => (n < 0 ? "−" : "+");
+    for (const b of stepButtons) {
+      const n = Number(b.dataset.step);
+      const size = Math.abs(n) === 2 ? c.big : c.small;
+      b.textContent = `${sign(n)}${isPace(unit) ? `${size}s` : size}`;
+    }
+    Object.assign(slider, { min: c.min, max: c.max, step: c.small });
+    $("slider-min").textContent = label(c.min);
+    $("slider-max").textContent = label(c.max);
     if (secPerKm) writeInput(secPerKm);
     render();
   }
@@ -321,6 +390,75 @@ const field =
     renderHistory();
   });
 
-  setUnit("mi");
+  // Hold a step button to repeat. Keyboard activation arrives as a click.
+  for (const b of stepButtons) {
+    const n = Number(b.dataset.step);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const stop = () => clearTimeout(timer);
+    const repeat = (delay: number) => {
+      timer = setTimeout(() => {
+        step(n);
+        repeat(90);
+      }, delay);
+    };
+    b.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      step(n);
+      repeat(400);
+    });
+    for (const type of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(type, stop);
+    b.addEventListener("click", (ev) => {
+      if (ev.detail === 0) step(n);
+    });
+    b.addEventListener("contextmenu", (ev) => ev.preventDefault());
+  }
+
+  slider.addEventListener("input", () => setValue(Number(slider.value)));
+
+  // Reopen where you left off; first visit starts at 9:00 /mi.
+  let last: { unit?: Unit; secPerKm?: number } = {};
+  try {
+    last = JSON.parse(localStorage.getItem(LAST_KEY) ?? "{}");
+  } catch {
+    // Use the default.
+  }
+  secPerKm = last.secPerKm && last.secPerKm > 0 ? last.secPerKm : 540 / KM_PER_MI;
+  setUnit(last.unit && last.unit in CONTROLS ? last.unit : "mi");
   renderHistory();
 </script>
+
+<style>
+  /* A thumb big enough to grab mid-run. */
+  .slider {
+    appearance: none;
+    height: 2.75rem;
+    background: transparent;
+    touch-action: none;
+  }
+  .slider::-webkit-slider-runnable-track {
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.3);
+  }
+  .slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 2rem;
+    height: 2rem;
+    margin-top: -0.75rem;
+    border-radius: 9999px;
+    background: white;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+  }
+  .slider::-moz-range-track {
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.3);
+  }
+  .slider::-moz-range-thumb {
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 9999px;
+    background: white;
+  }
+</style>
