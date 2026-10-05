@@ -28,7 +28,12 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
 
 <Base title="Running converter · pebabion" description="Convert a running pace or speed into every other unit, with race finish times.">
   <div class="mx-auto max-w-xl pb-12">
-    <h1 class="mb-2 text-xl font-semibold sm:mt-8 sm:mb-3 sm:text-2xl">Running converter</h1>
+    <!-- A quiet breadcrumb instead of a big title; the card is the headline. -->
+    <nav class="mb-2 text-sm text-gray-500 sm:mt-6 sm:mb-3 dark:text-gray-400" aria-label="Breadcrumb">
+      <a href="/apps/" class="hover:text-green-600">Apps</a>
+      <span class="mx-1" aria-hidden="true">/</span>
+      <h1 class="inline font-medium text-gray-700 dark:text-gray-200">Running converter</h1>
+    </nav>
 
     <section
       class="rounded-3xl bg-gradient-to-b from-green-600 to-green-800 p-3 text-white shadow-lg shadow-green-900/20 dark:from-green-700 dark:to-green-900"
