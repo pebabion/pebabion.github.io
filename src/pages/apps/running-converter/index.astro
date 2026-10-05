@@ -7,31 +7,29 @@ const units = [
   { id: "mph", label: "mph" },
   { id: "kmh", label: "km/h" },
 ];
+// Everything below the input sits in one 3-column grid so it fits on a phone
+// screen without scrolling. The tile for the input unit is hidden, leaving 9.
 const results = [
-  { id: "mi", label: "Pace per mile" },
-  { id: "km", label: "Pace per km" },
-  { id: "mph", label: "Miles per hour" },
-  { id: "kmh", label: "Km per hour" },
-  { id: "ms", label: "Metres per second" },
+  { id: "mi", label: "min/mi" },
+  { id: "km", label: "min/km" },
+  { id: "mph", label: "mph" },
+  { id: "kmh", label: "km/h" },
+  { id: "ms", label: "m/s" },
   { id: "lap", label: "400 m lap" },
-];
-const races = [
-  { id: "5k", label: "5K" },
-  { id: "10k", label: "10K" },
-  { id: "half", label: "Half" },
-  { id: "full", label: "Marathon" },
+  { id: "5k", label: "5K", race: true },
+  { id: "10k", label: "10K", race: true },
+  { id: "half", label: "Half", race: true },
+  { id: "full", label: "Marathon", race: true },
 ];
 const field =
-  "w-full min-w-0 rounded-lg border-0 bg-white/15 px-3 py-2 text-5xl font-bold tabular-nums text-white placeholder:text-white/40 focus:bg-white/25 focus:outline-none";
+  "w-full min-w-0 rounded-lg border-0 bg-white/15 px-3 py-1 text-4xl font-bold tabular-nums text-white placeholder:text-white/40 focus:bg-white/25 focus:outline-none";
 ---
 
 <Base title="Running converter · pebabion" description="Convert a running pace or speed into every other unit, with race finish times.">
   <div class="mx-auto max-w-xl pb-12">
-    <a href="/apps/" class="mt-4 inline-block py-2 text-base text-green-600 hover:underline">← Apps</a>
-    <h1 class="mb-1 text-3xl font-semibold">Running converter</h1>
-    <p class="mb-5 text-base text-gray-600 dark:text-gray-400">Pick a unit, type a value, get everything else.</p>
+    <h1 class="mb-3 text-2xl font-semibold">Running converter</h1>
 
-    <section class="rounded-2xl bg-green-700 p-4 text-white dark:bg-green-800" aria-label="Input">
+    <section class="rounded-2xl bg-green-700 p-3 text-white dark:bg-green-800" aria-label="Input">
       <div class="grid grid-cols-4 gap-1 rounded-xl bg-black/20 p-1" role="radiogroup" aria-label="Input unit">
         {
           units.map((u) => (
@@ -39,7 +37,7 @@ const field =
               type="button"
               role="radio"
               data-unit={u.id}
-              class="min-h-11 rounded-lg text-base font-semibold text-white/80 aria-checked:bg-white aria-checked:text-green-800"
+              class="min-h-10 rounded-lg text-base font-semibold text-white/80 aria-checked:bg-white aria-checked:text-green-800"
             >
               {u.label}
             </button>
@@ -47,15 +45,14 @@ const field =
         }
       </div>
 
-      <div id="pace-input" class="mt-4 flex items-center gap-2">
+      <div id="pace-input" class="mt-3 flex items-center gap-2">
         <input id="min" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="8" aria-label="Minutes" class={field} />
-        <span class="text-5xl font-bold">:</span>
+        <span class="text-4xl font-bold">:</span>
         <input id="sec" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="30" aria-label="Seconds" class={field} />
       </div>
-      <div id="speed-input" class="mt-4" hidden>
+      <div id="speed-input" class="mt-3" hidden>
         <input id="speed" type="text" inputmode="decimal" placeholder="7.0" aria-label="Speed" class={field} />
       </div>
-      <p id="unit-hint" class="mt-2 text-base text-white/80">minutes : seconds per mile</p>
 
       <!-- One-tap adjustments; hold a button to keep stepping. -->
       <div class="mt-3 grid grid-cols-4 gap-2" aria-label="Adjust">
@@ -64,35 +61,26 @@ const field =
             <button
               type="button"
               data-step={n}
-              class="min-h-14 touch-manipulation rounded-xl bg-white/15 text-xl font-bold tabular-nums select-none active:bg-white/35"
+              class="min-h-12 touch-manipulation rounded-xl bg-white/15 text-xl font-bold tabular-nums select-none active:bg-white/35"
             />
           ))
         }
       </div>
-      <input id="slider" type="range" aria-label="Drag to change" class="slider mt-4 w-full" />
-      <div class="flex justify-between text-sm text-white/70">
-        <span id="slider-min"></span><span id="slider-max"></span>
-      </div>
+      <input id="slider" type="range" aria-label="Drag to change" class="slider mt-1 w-full" />
     </section>
 
-    <section class="mt-4 grid grid-cols-2 gap-3" aria-label="Results" aria-live="polite">
+    <section class="mt-3 grid grid-cols-3 gap-2" aria-label="Results" aria-live="polite">
       {
         results.map((r) => (
-          <div data-result={r.id} class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-secondary-dark-bg">
-            <span class="block text-sm text-gray-500 dark:text-gray-400">{r.label}</span>
-            <strong data-out={r.id} class="text-2xl tabular-nums">–</strong>
-          </div>
-        ))
-      }
-    </section>
-
-    <h2 class="mt-6 mb-2 text-lg font-semibold">Finish times</h2>
-    <section class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Finish times">
-      {
-        races.map((r) => (
-          <div class="border-t-4 border-green-600 pt-2 text-center">
-            <span class="block text-sm text-gray-500 dark:text-gray-400">{r.label}</span>
-            <strong data-out={r.id} class="text-xl tabular-nums">–</strong>
+          <div
+            data-result={r.id}
+            class:list={[
+              "rounded-lg border bg-white px-2 py-1.5 dark:bg-secondary-dark-bg",
+              r.race ? "border-green-600/60" : "border-gray-200 dark:border-gray-700",
+            ]}
+          >
+            <span class="block text-xs text-gray-500 dark:text-gray-400">{r.label}</span>
+            <strong data-out={r.id} class="text-lg tabular-nums">–</strong>
           </div>
         ))
       }
@@ -102,12 +90,12 @@ const field =
       id="save"
       type="button"
       disabled
-      class="mt-6 min-h-12 w-full rounded-xl bg-green-600 text-lg font-semibold text-white hover:bg-green-700 disabled:opacity-40"
+      class="mt-3 min-h-12 w-full rounded-xl bg-green-600 text-lg font-semibold text-white hover:bg-green-700 disabled:opacity-40"
     >
       Save to history
     </button>
 
-    <section class="mt-8" aria-labelledby="history-title">
+    <section class="mt-6" aria-labelledby="history-title">
       <div class="mb-2 flex items-center justify-between">
         <h2 id="history-title" class="text-lg font-semibold">History</h2>
         <button id="clear" type="button" hidden class="min-h-11 px-2 text-base text-red-600 hover:underline dark:text-red-400">
@@ -128,12 +116,6 @@ const field =
 
   const KM_PER_MI = 1.609344;
   const RACES_KM = { "5k": 5, "10k": 10, half: 21.0975, full: 42.195 };
-  const HINTS: Record<Unit, string> = {
-    mi: "minutes : seconds per mile",
-    km: "minutes : seconds per km",
-    mph: "miles per hour",
-    kmh: "kilometres per hour",
-  };
   // Step sizes and slider range, in the unit's own terms (seconds or speed).
   const CONTROLS: Record<Unit, { small: number; big: number; min: number; max: number }> = {
     mi: { small: 5, big: 15, min: 240, max: 900 },
@@ -264,10 +246,8 @@ const field =
     for (const b of unitButtons) b.setAttribute("aria-checked", String(b.dataset.unit === unit));
     $("pace-input").hidden = !isPace(unit);
     $("speed-input").hidden = isPace(unit);
-    $("unit-hint").textContent = HINTS[unit];
 
     const c = CONTROLS[unit];
-    const label = (v: number) => (isPace(unit) ? clock(v) : String(v));
     const sign = (n: number) => (n < 0 ? "−" : "+");
     for (const b of stepButtons) {
       const n = Number(b.dataset.step);
@@ -275,8 +255,6 @@ const field =
       b.textContent = `${sign(n)}${isPace(unit) ? `${size}s` : size}`;
     }
     Object.assign(slider, { min: c.min, max: c.max, step: c.small });
-    $("slider-min").textContent = label(c.min);
-    $("slider-max").textContent = label(c.max);
     if (secPerKm) writeInput(secPerKm);
     render();
   }
