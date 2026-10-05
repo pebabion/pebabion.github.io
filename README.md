@@ -15,6 +15,14 @@ npm run build    # type-check and build to dist/
 npm run preview  # serve dist/
 ```
 
+## Test
+
+```sh
+npm test          # unit tests (Vitest): pace and speed maths in src/lib
+npm run test:e2e  # browser tests (Playwright): builds the site, then drives it
+                  # at desktop and phone sizes. First run: npx playwright install chromium
+```
+
 ## Write a post
 
 Add `src/content/blog/<slug>.md`, or `src/content/blog/<slug>/index.md` with
@@ -39,5 +47,6 @@ fails the build.
 
 ## Deploy
 
-Pushing to `dev` builds the site and deploys it to GitHub Pages. Pull requests
-build but don't deploy.
+Pushing to `dev` runs the type check, unit tests and browser tests, then builds
+the site and deploys it to GitHub Pages. If any test fails, nothing deploys.
+Pull requests run the same checks but don't deploy.

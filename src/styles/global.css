@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Dark mode follows <html data-theme>, which an inline script in BaseHead sets
+   from the saved choice or, by default, the system setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --color-main-bg: #fafbfb;
   --color-main-dark-bg: #20232a;
@@ -11,11 +15,9 @@ body {
   font-size: 120%;
 }
 
-/* Shiki emits both themes; pick one with the colour scheme. */
-@media (prefers-color-scheme: dark) {
-  .astro-code,
-  .astro-code span {
-    color: var(--shiki-dark) !important;
-    background-color: var(--shiki-dark-bg) !important;
-  }
+/* Shiki emits both themes; pick one with the site theme. */
+[data-theme="dark"] .astro-code,
+[data-theme="dark"] .astro-code span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
 }

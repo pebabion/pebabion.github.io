@@ -28,7 +28,12 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
 
 <Base title="Running converter · pebabion" description="Convert a running pace or speed into every other unit, with race finish times.">
   <div class="mx-auto max-w-xl pb-12">
-    <h1 class="mb-2 text-xl font-semibold sm:mt-8 sm:mb-3 sm:text-2xl">Running converter</h1>
+    <!-- A quiet breadcrumb instead of a big title; the card is the headline. -->
+    <nav class="mb-2 text-sm text-gray-500 sm:mt-6 sm:mb-3 dark:text-gray-400" aria-label="Breadcrumb">
+      <a href="/apps/" class="hover:text-green-600">Apps</a>
+      <span class="mx-1" aria-hidden="true">/</span>
+      <h1 class="inline font-medium text-gray-700 dark:text-gray-200">Running converter</h1>
+    </nav>
 
     <section
       class="rounded-3xl bg-gradient-to-b from-green-600 to-green-800 p-3 text-white shadow-lg shadow-green-900/20 dark:from-green-700 dark:to-green-900"
@@ -135,21 +140,25 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
 </Base>
 
 <script>
-  type Unit = "mi" | "km" | "mph" | "kmh";
+  import {
+    DEFAULT_SEC_PER_KM,
+    STEPS,
+    type Unit,
+    clock,
+    describe,
+    fromUnit,
+    isPace,
+    outputs,
+    parsePace,
+    parseSpeed,
+    snap,
+    toUnit,
+  } from "../../../lib/running";
+
   type Entry = { id: string; at: number; unit: Unit; secPerKm: number };
 
-  const KM_PER_MI = 1.609344;
-  const RACES_KM = { "5k": 5, "10k": 10, half: 21.0975, full: 42.195 };
-  // Step sizes in the unit's own terms (seconds or speed).
-  const STEPS: Record<Unit, { small: number; big: number }> = {
-    mi: { small: 5, big: 15 },
-    km: { small: 5, big: 15 },
-    mph: { small: 0.1, big: 0.5 },
-    kmh: { small: 0.1, big: 0.5 },
-  };
   // Swipe distance for one small step. Higher is less sensitive.
   const PX_PER_STEP = 25;
-  const DEFAULT_SEC_PER_KM = 540 / KM_PER_MI; // 9:00 /mi
   const LAST_KEY = "running-converter:last:v1";
   const STORAGE_KEY = "running-converter:history:v1";
   const MAX_HISTORY = 200;
@@ -168,61 +177,14 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
   let unit: Unit = "mi";
   let secPerKm: number | null = null;
 
-  // Formatting
-
-  function clock(totalSec: number) {
-    const s = Math.round(totalSec);
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const ss = String(s % 60).padStart(2, "0");
-    return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
-  }
-  const kmh = (spk: number) => 3600 / spk;
-
-  function outputs(spk: number): Record<string, string> {
-    const out: Record<string, string> = {
-      mi: clock(spk * KM_PER_MI),
-      km: clock(spk),
-      mph: (kmh(spk) / KM_PER_MI).toFixed(2),
-      kmh: kmh(spk).toFixed(2),
-      lap: clock(spk * 0.4),
-    };
-    for (const [id, km] of Object.entries(RACES_KM)) out[id] = clock(spk * km);
-    return out;
-  }
-
-  function describeInput(e: Pick<Entry, "unit" | "secPerKm">) {
-    const o = outputs(e.secPerKm);
-    const trim = (v: string) => String(Number(v));
-    return { mi: `${o.mi} /mi`, km: `${o.km} /km`, mph: `${trim(o.mph)} mph`, kmh: `${trim(o.kmh)} km/h` }[e.unit];
-  }
-
-  // Input → seconds per km
+  const describeInput = (e: Pick<Entry, "unit" | "secPerKm">) => describe(e.secPerKm, e.unit);
 
   function readInput(): number | null {
-    if (isPace(unit)) {
-      const m = Number(minEl.value || 0);
-      const s = Number(secEl.value || 0);
-      if (!Number.isFinite(m) || !Number.isFinite(s) || s >= 60) return null;
-      const sec = m * 60 + s;
-      return sec > 0 ? fromUnit(sec) : null;
-    }
-    const v = Number(speedEl.value.replace(",", "."));
-    return Number.isFinite(v) && v > 0 ? fromUnit(v) : null;
-  }
-
-  const isPace = (u: Unit) => u === "mi" || u === "km";
-
-  // Seconds per mile/km for pace units, mph/km/h for speed units.
-  function toUnit(spk: number, u: Unit = unit) {
-    return { mi: spk * KM_PER_MI, km: spk, mph: kmh(spk) / KM_PER_MI, kmh: kmh(spk) }[u];
-  }
-  function fromUnit(v: number, u: Unit = unit) {
-    return { mi: v / KM_PER_MI, km: v, mph: 3600 / (v * KM_PER_MI), kmh: 3600 / v }[u];
+    return isPace(unit) ? parsePace(minEl.value, secEl.value, unit) : parseSpeed(speedEl.value, unit);
   }
 
   function writeInput(spk: number) {
-    const v = toUnit(spk);
+    const v = toUnit(spk, unit);
     if (isPace(unit)) {
       const total = Math.round(v);
       minEl.value = String(Math.floor(total / 60));
@@ -234,16 +196,14 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
 
   // Set a new value from the steppers or swipe: update the input too.
   function setValue(v: number) {
-    const { small } = STEPS[unit];
-    v = Math.max(small, Math.round(v / small) * small);
-    secPerKm = fromUnit(v);
+    secPerKm = fromUnit(snap(v, unit), unit);
     writeInput(secPerKm);
     render();
   }
 
   function step(n: number) {
     const { small, big } = STEPS[unit];
-    const current = toUnit(secPerKm ?? DEFAULT_SEC_PER_KM);
+    const current = toUnit(secPerKm ?? DEFAULT_SEC_PER_KM, unit);
     setValue(current + Math.sign(n) * (Math.abs(n) === 2 ? big : small));
   }
 
@@ -258,7 +218,7 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
     });
     saveBtn.disabled = !secPerKm;
     if (secPerKm) {
-      scrub.setAttribute("aria-valuetext", isPace(unit) ? `${clock(toUnit(secPerKm))} per ${unit}` : `${toUnit(secPerKm).toFixed(1)} ${unit}`);
+      scrub.setAttribute("aria-valuetext", isPace(unit) ? `${clock(toUnit(secPerKm, unit))} per ${unit}` : `${toUnit(secPerKm, unit).toFixed(1)} ${unit}`);
       try {
         localStorage.setItem(LAST_KEY, JSON.stringify({ unit, secPerKm }));
       } catch {
@@ -381,6 +341,7 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
     let justFocused = false;
     el.addEventListener("focus", () => {
       justFocused = true;
+      el.select();
       setTimeout(() => el.setSelectionRange(0, el.value.length), 0);
     });
     el.addEventListener("mouseup", (ev) => {
@@ -449,7 +410,7 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
   let drag: { x: number; start: number; steps: number; offset: number } | null = null;
   scrub.addEventListener("pointerdown", (ev) => {
     scrub.setPointerCapture(ev.pointerId);
-    drag = { x: ev.clientX, start: toUnit(secPerKm ?? DEFAULT_SEC_PER_KM), steps: 0, offset: tickOffset };
+    drag = { x: ev.clientX, start: toUnit(secPerKm ?? DEFAULT_SEC_PER_KM, unit), steps: 0, offset: tickOffset };
   });
   scrub.addEventListener("pointermove", (ev) => {
     if (!drag) return;

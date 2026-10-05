@@ -16,6 +16,25 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="color-scheme" content="light dark" />
+<!-- Set the theme before first paint so pages never flash the wrong colours.
+     "theme" in localStorage is "light" or "dark"; missing means follow the system. -->
+<script is:inline>
+  (() => {
+    const system = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      let saved = null;
+      try {
+        saved = localStorage.getItem("theme");
+      } catch {}
+      const theme = saved === "light" || saved === "dark" ? saved : system.matches ? "dark" : "light";
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+    };
+    apply();
+    system.addEventListener("change", apply);
+    window.applyTheme = apply;
+  })();
+</script>
 <link rel="icon" href="https://hotemoji.com/images/emoji/r/tgkksj1y65ofr.png" />
 <link rel="sitemap" href="/sitemap-index.xml" />
 <link rel="alternate" type="application/rss+xml" title={SITE_TITLE} href={new URL("rss.xml", Astro.site)} />
