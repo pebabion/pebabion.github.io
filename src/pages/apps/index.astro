@@ -1,0 +1,35 @@
+---
+import { apps } from "../../data/apps";
+import Base from "../../layouts/Base.astro";
+---
+
+<Base title="Apps · pebabion" description="Small apps built by pebabion">
+  <h1 class="mt-8 mb-2 text-3xl font-semibold">Apps</h1>
+  <p class="mb-8 text-gray-600 dark:text-gray-400">Small tools I built for myself, mostly through vibecoding ;')</p>
+  <ul class="mb-12 space-y-3">
+    {
+      apps.map((app) => (
+        <li>
+          <a
+            href={`/apps/${app.slug}/`}
+            class="group flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-green-600 dark:border-gray-700 dark:bg-secondary-dark-bg dark:hover:border-green-600"
+          >
+            <span
+              class="flex size-14 shrink-0 items-center justify-center rounded-xl bg-green-50 text-3xl dark:bg-green-950"
+              aria-hidden="true"
+            >
+              {app.emoji}
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold group-hover:text-green-600">{app.name}</span>
+              <span class="block text-base text-gray-600 dark:text-gray-400">{app.description}</span>
+            </span>
+            <span class="text-2xl text-gray-400 transition-transform group-hover:translate-x-1 group-hover:text-green-600" aria-hidden="true">
+              →
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</Base>
