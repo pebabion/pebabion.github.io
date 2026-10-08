@@ -104,6 +104,28 @@ test("swiping moves 5 s per 25 px, relative to where you start", async ({ page }
   await page.mouse.up();
 });
 
+test("the swipe strip shows the change while swiping", async ({ page }) => {
+  const delta = page.locator("#scrub-delta");
+  await expect(page.locator("#scrub")).toHaveAttribute("aria-label", "Swipe to change, 5s per tick");
+  await expect(delta).toHaveCSS("opacity", "0");
+
+  const box = (await page.locator("#scrub").boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + 40, y);
+  await page.mouse.down();
+  await expect(delta).toHaveText("±0");
+  await page.mouse.move(box.x + 40 + 75, y, { steps: 6 });
+  await expect(delta).toHaveText("+15s");
+  await expect(delta).toHaveCSS("opacity", "1");
+  await page.mouse.move(box.x + 40 + 25 * 13, y, { steps: 10 });
+  await expect(delta).toHaveText("+1:05");
+  await page.mouse.up();
+  await expect(delta).toHaveCSS("opacity", "0");
+
+  await page.locator('[data-unit="mph"]').click();
+  await expect(page.locator("#scrub")).toHaveAttribute("aria-label", "Swipe to change, 0.1 mph per tick");
+});
+
 test("arrow keys step the swipe strip", async ({ page }) => {
   await page.locator("#scrub").focus();
   await page.keyboard.press("ArrowRight");

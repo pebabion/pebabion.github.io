@@ -94,6 +94,11 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
         aria-label="Swipe to change"
         class:list={["scrub relative mt-2 h-12 cursor-ew-resize rounded-2xl bg-black/20", raised]}
       >
+        <!-- Shows the running change while you swipe, e.g. "+15s". -->
+        <span
+          id="scrub-delta"
+          class="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 rounded-full bg-white px-2.5 py-0.5 text-sm font-bold whitespace-nowrap text-green-800 tabular-nums opacity-0 shadow transition-opacity"
+          aria-hidden="true"></span>
         <span class="pointer-events-none absolute inset-y-2 left-1/2 w-1 -translate-x-1/2 rounded-full bg-white shadow" aria-hidden="true"></span>
         <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-lg font-bold text-white/50" aria-hidden="true">‹</span>
         <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-lg font-bold text-white/50" aria-hidden="true">›</span>
@@ -233,6 +238,7 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
     $("pace-input").hidden = !isPace(unit);
     $("speed-input").hidden = isPace(unit);
     $("unit-suffix").textContent = { mi: "/mi", km: "/km", mph: "mph", kmh: "km/h" }[unit];
+    scrub.setAttribute("aria-label", `Swipe to change, ${formatDelta(1).slice(1)} per tick`);
 
     const c = STEPS[unit];
     const sign = (n: number) => (n < 0 ? "−" : "+");
@@ -407,10 +413,27 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
   // Swipe right to raise the number, left to lower it. The tick marks slide
   // with the finger so the strip feels like a wheel.
   let tickOffset = 0;
+  const deltaEl = $("scrub-delta");
+  let hideDelta: ReturnType<typeof setTimeout> | undefined;
+
+  // A change of n small steps, signed, in the unit's terms: "+15s", "−1:05", "+0.3".
+  function formatDelta(n: number) {
+    const sign = n < 0 ? "−" : "+";
+    const size = Math.abs(n) * STEPS[unit].small;
+    if (!isPace(unit)) return `${sign}${size.toFixed(1)} ${unit === "mph" ? "mph" : "km/h"}`;
+    return size < 60 ? `${sign}${size}s` : `${sign}${clock(size)}`;
+  }
+  function showDelta(n: number) {
+    clearTimeout(hideDelta);
+    deltaEl.textContent = n === 0 ? "±0" : formatDelta(n);
+    deltaEl.classList.remove("opacity-0");
+  }
+
   let drag: { x: number; start: number; steps: number; offset: number } | null = null;
   scrub.addEventListener("pointerdown", (ev) => {
     scrub.setPointerCapture(ev.pointerId);
     drag = { x: ev.clientX, start: toUnit(secPerKm ?? DEFAULT_SEC_PER_KM, unit), steps: 0, offset: tickOffset };
+    showDelta(0);
   });
   scrub.addEventListener("pointermove", (ev) => {
     if (!drag) return;
@@ -421,9 +444,15 @@ const raised = "touch-manipulation select-none focus:outline-none focus-visible:
     if (steps !== drag.steps) {
       drag.steps = steps;
       setValue(drag.start + steps * STEPS[unit].small);
+      showDelta(steps);
     }
   });
-  for (const type of ["pointerup", "pointercancel"]) scrub.addEventListener(type, () => (drag = null));
+  for (const type of ["pointerup", "pointercancel"]) {
+    scrub.addEventListener(type, () => {
+      drag = null;
+      hideDelta = setTimeout(() => deltaEl.classList.add("opacity-0"), 700);
+    });
+  }
   scrub.addEventListener("keydown", (ev) => {
     if (ev.key === "ArrowRight" || ev.key === "ArrowUp") step(1);
     else if (ev.key === "ArrowLeft" || ev.key === "ArrowDown") step(-1);
