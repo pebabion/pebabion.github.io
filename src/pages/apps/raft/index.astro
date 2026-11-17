@@ -1,0 +1,711 @@
+---
+import Base from "../../../layouts/Base.astro";
+
+// Five servers in a ring, in SVG units. Under each name sits that server's
+// copy of the list; above a candidate, the votes it has.
+const NAMES = ["Ada", "Bea", "Cal", "Dot", "Eli"];
+const C = 200;
+const R = 138;
+const nodes = NAMES.map((name, i) => {
+  const a = (-90 + i * (360 / NAMES.length)) * (Math.PI / 180);
+  return { i, name, x: Math.round(C + R * Math.cos(a)), y: Math.round(C + R * Math.sin(a)) };
+});
+const links = nodes.flatMap((a) => nodes.filter((b) => b.i > a.i).map((b) => ({ a, b })));
+const MAJORITY = Math.floor(NAMES.length / 2) + 1;
+const QUEST_STEPS = 6;
+const button = "touch-manipulation select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-main-dark-bg";
+---
+
+<Base
+  title="Raft playground · pebabion"
+  description="Five little servers share one list. Crash them and watch them stay in sync. Raft, slowed right down."
+>
+  <div class="mx-auto max-w-xl pb-12">
+    <nav class="mb-2 text-sm text-gray-500 sm:mt-6 sm:mb-3 dark:text-gray-400" aria-label="Breadcrumb">
+      <a href="/apps/" class="hover:text-green-600">Apps</a>
+      <span class="mx-1" aria-hidden="true">/</span>
+      <h1 class="inline font-medium text-gray-700 dark:text-gray-200">Raft playground</h1>
+    </nav>
+    <p class="mb-3 text-base text-gray-600 dark:text-gray-400">Five servers share one list. Crash them and watch them stay in sync.</p>
+
+    <section class="rounded-3xl bg-white p-3 shadow-sm sm:p-4 dark:bg-white/5 dark:shadow-none" aria-label="The five servers">
+      <p id="caption" class="flex min-h-8 items-center justify-center text-center text-lg font-semibold" aria-live="polite">No leader yet ⏳</p>
+
+      <svg viewBox="0 -12 400 418" class="mx-auto block w-full max-w-md" role="group" aria-label="Five servers and the lines between them">
+        <g>
+          {
+            links.map(({ a, b }) => (
+              <g class="link" data-a={a.i} data-b={b.i} data-cut="false" data-lead="false" role="button" tabindex="0" aria-label={`Line between ${a.name} and ${b.name}. Press to cut.`}>
+                <line class="hit" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+                <line class="wire" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+                <g class="snip" transform={`translate(${(a.x + b.x) / 2} ${(a.y + b.y) / 2})`}>
+                  <circle r="9" />
+                  <path d="M-3.5 -3.5 L3.5 3.5 M3.5 -3.5 L-3.5 3.5" />
+                </g>
+              </g>
+            ))
+          }
+        </g>
+        <g id="flights"></g>
+        {
+          nodes.map((n) => (
+            <g
+              class="node"
+              data-node={n.i}
+              data-x={n.x}
+              data-y={n.y}
+              data-role="follower"
+              transform={`translate(${n.x} ${n.y})`}
+              role="button"
+              tabindex="0"
+              aria-label={`${n.name}. Press to stop.`}
+              style={`--blink-delay: -${(n.i * 1.7) % 5}s`}
+            >
+              <g class="face" transform="scale(0.85)">
+                <circle class="pulse" r="32" />
+                <circle class="track" r="41" />
+                <circle class="timer" r="41" pathLength="100" transform="rotate(-90)" />
+                <circle class="body" r="32" />
+                <path class="crown" d="M-14 -37 L-15 -51 L-7 -44 L0 -55 L7 -44 L15 -51 L14 -37 Z" />
+                <g class="votes">
+                  {Array.from({ length: MAJORITY }, (_, k) => (
+                    <text class="heart" x={(k - (MAJORITY - 1) / 2) * 16} y="-48">
+                      ♥
+                    </text>
+                  ))}
+                </g>
+                <ellipse class="cheek" cx="-17" cy="7" rx="5" ry="3" />
+                <ellipse class="cheek" cx="17" cy="7" rx="5" ry="3" />
+                <g class="eyes eyes-open">
+                  <ellipse cx="-10" cy="-5" rx="3.2" ry="4.2" />
+                  <ellipse cx="10" cy="-5" rx="3.2" ry="4.2" />
+                </g>
+                <path class="eyes eyes-happy" d="M-14 -4 Q-10 -10 -6 -4 M6 -4 Q10 -10 14 -4" />
+                <path class="eyes eyes-shut" d="M-14 -4 Q-10 0 -6 -4 M6 -4 Q10 0 14 -4" />
+                <path class="mouth mouth-follower" d="M-6 7 Q0 12 6 7" />
+                <circle class="mouth mouth-candidate" cy="9" r="3.5" />
+                <path class="mouth mouth-leader" d="M-9 5 Q0 17 9 5 Z" />
+                <path class="mouth mouth-dead" d="M-4 10 L4 10" />
+                <text class="zzz" x="28" y="-24">💤</text>
+              </g>
+              <text class="name" y="51">{n.name}</text>
+              <g class="items" transform="translate(0 71)" />
+            </g>
+          ))
+        }
+      </svg>
+
+      <p class="text-center text-sm text-gray-500 dark:text-gray-400">Tap a face to stop it · Tap a line to cut it</p>
+
+      <div class="mt-3 flex gap-2">
+        <button
+          id="add"
+          type="button"
+          disabled
+          class:list={[
+            "min-h-12 flex-1 rounded-2xl bg-green-600 text-lg font-semibold text-white transition-opacity hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-green-600",
+            button,
+          ]}
+        >
+          Add <span id="next">🍩</span>
+        </button>
+        <button
+          id="pause"
+          type="button"
+          aria-label="Pause"
+          class:list={["flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/15", button]}
+        >
+          <svg id="icon-pause" viewBox="0 0 24 24" class="size-5" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+          <svg id="icon-play" viewBox="0 0 24 24" class="hidden size-5" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.87l11-6.5a1 1 0 0 0 0-1.74l-11-6.5A1 1 0 0 0 8 5.5Z" /></svg>
+        </button>
+        <button
+          id="reset"
+          type="button"
+          aria-label="Start over"
+          class:list={["flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/15", button]}
+        >
+          <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7" /><path d="M4 4v4.5h4.5" /></svg>
+        </button>
+      </div>
+
+      <!-- One thing to try at a time; it ticks itself off. -->
+      <div id="quest" data-step="0" data-state="todo" class="mt-3 flex items-center gap-3 rounded-2xl bg-green-50 px-3 py-2.5 dark:bg-green-950/50">
+        <ol id="quest-dots" class="flex shrink-0 gap-1" aria-hidden="true">
+          {Array.from({ length: QUEST_STEPS }, () => <li class="size-2 rounded-full bg-green-200 dark:bg-green-900" />)}
+        </ol>
+        <p id="quest-text" class="text-base font-medium text-green-900 dark:text-green-200" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+      This is real{" "}
+      <a href="https://raft.github.io/" class="text-green-600 hover:underline">Raft</a>, how databases keep their copies in sync, slowed down a
+      thousand times.
+    </p>
+  </div>
+</Base>
+
+<script>
+  import { Cluster, type Flight, type Server } from "../../../lib/raft";
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const NAMES = ["Ada", "Bea", "Cal", "Dot", "Eli"];
+  const EMOJI = ["🍩", "🐢", "🌮", "🎈", "🍓", "🦆", "⭐", "🧃", "🐙", "🌵", "🍕", "🐝"];
+  const MAX_ITEMS = 6; // shown under each server
+  const EDGE = 31; // a face's radius plus its outline, in SVG units (faces are drawn at 85%)
+  const FLASH_MS = 2500; // simulated ms a "saved" caption stays up
+  const QUEST_PAUSE = 2600; // real ms a finished task shows its ✓
+  // ?speed=4 runs faster (used by the browser tests).
+  const SPEED = Math.min(10, Math.max(0.1, Number(new URLSearchParams(location.search).get("speed")) || 1));
+
+  const nodeEls = [...document.querySelectorAll<SVGGElement>(".node")];
+  const linkEls = [...document.querySelectorAll<SVGGElement>(".link")];
+  const pos = nodeEls.map((el) => ({ x: Number(el.dataset.x), y: Number(el.dataset.y) }));
+  const flightsEl = $("flights");
+  const captionEl = $("caption");
+  const addBtn = $("add") as HTMLButtonElement;
+  const pauseBtn = $("pause");
+  const questEl = $("quest");
+  const questTextEl = $("quest-text");
+  const questDots = [...$("quest-dots").children] as HTMLElement[];
+
+  const fresh = () => ({ beats: [] as number[], votes: [] as number[], items: [] as string[], labels: [] as string[], caption: "", quest: "", committed: 0 });
+  let cluster = new Cluster(NAMES);
+  let paused = false;
+  let emojiIndex = 0;
+  let seen = fresh(); // what is on screen, so the DOM only changes when needed
+  let flash = { text: "", until: -1 };
+  let quest = 0;
+  let questDone: { at: number; text: string } | null = null;
+  let stoppedLeaderTerm: number | null = null;
+
+  const awake = () => cluster.servers.filter((s) => s.alive);
+  const alone = (s: Server) => cluster.servers.every((o) => o.id === s.id || cluster.isCut(s.id, o.id));
+  const nextEmoji = () => EMOJI[emojiIndex % EMOJI.length];
+
+  function caughtUp() {
+    const l = cluster.leader();
+    return !!l && cluster.servers.every((s) => s.alive && s.log.length === l.log.length && s.commit === l.log.length);
+  }
+
+  const QUEST = [
+    {
+      todo: "Watch: the first timer to run out asks for votes",
+      done: () => `${cluster.leader()?.name} got ${cluster.majority} votes and leads 👑`,
+      check: () => !!cluster.leader(),
+    },
+    { todo: "Tap Add to save something", done: () => `Saved: ${cluster.majority} of 5 have it ✅`, check: () => cluster.committed.length > 0 },
+    {
+      todo: "Tap the leader 👑 to stop it",
+      done: () => "New leader. Nothing lost 🙌",
+      check: () => stoppedLeaderTerm !== null && (cluster.leader()?.term ?? 0) > stoppedLeaderTerm,
+    },
+    { todo: "Stop 3 servers", done: () => "Too few to vote: stuck, but safe 🥶", check: () => awake().length < cluster.majority },
+    { todo: "Tap them to wake them up", done: () => "Back, and caught up 🔄", check: caughtUp },
+    { todo: "Cut all 4 lines to one server ✂️", done: () => "Alone, it can't win. The rest carry on.", check: () => cluster.servers.some(alone) },
+  ];
+
+  // One short line about what is happening now.
+  function caption() {
+    if (cluster.now < flash.until) return flash.text;
+    const up = awake();
+    if (up.length < cluster.majority) return `Only ${up.length} awake: too few to vote 🥶`;
+    const l = cluster.leader();
+    if (l) {
+      const pending = l.log.slice(l.commit).map((e) => e.value);
+      return pending.length ? `Copying ${pending.join(" ")} to everyone…` : `${l.name} leads 👑 and pings everyone`;
+    }
+    const asking = up.filter((s) => s.role === "candidate");
+    if (asking.length > 1) return `${asking.map((s) => s.name).join(" and ")} both want to lead`;
+    if (asking.length) return `${asking[0].name} asks for votes 🙋`;
+    return "No leader yet ⏳";
+  }
+
+  function drawNodes() {
+    const now = cluster.now;
+    const l = cluster.leader();
+    cluster.servers.forEach((s, i) => {
+      const el = nodeEls[i];
+      const role = s.alive ? s.role : "dead";
+      if (el.dataset.role !== role) el.dataset.role = role;
+
+      // The ring is the server's patience. It drains, and refills each time the leader pings.
+      const left = role === "follower" || role === "candidate" ? (s.timerEnd - now) / (s.timerEnd - s.timerStart) : 0;
+      el.querySelector(".timer")!.setAttribute("stroke-dasharray", `${(Math.max(0, Math.min(1, left)) * 100).toFixed(1)} 100`);
+
+      // Hearts fill as votes come in.
+      const votes = role === "candidate" ? s.votes.size : 0;
+      if (seen.votes[i] !== votes) {
+        el.querySelectorAll(".heart").forEach((h, k) => h.classList.toggle("got", k < votes));
+        seen.votes[i] = votes;
+      }
+
+      const items = `${s.commit}|${s.log.map((e) => e.value).join(",")}`;
+      if (seen.items[i] !== items) {
+        drawItems(el, s);
+        seen.items[i] = items;
+      }
+
+      const what = role === "dead" ? "asleep" : role === "candidate" ? "asking for votes" : role;
+      const label = `${s.name}, ${what}, ${s.commit} of ${s.log.length} items saved. Press to ${s.alive ? "stop" : "wake"}.`;
+      if (seen.labels[i] !== label) el.setAttribute("aria-label", (seen.labels[i] = label));
+
+      if (s.beats !== seen.beats[i]) {
+        if (seen.beats[i] !== undefined && s.alive) {
+          el.querySelector(".pulse")!.animate(
+            [
+              { transform: "scale(1)", opacity: 0.5 },
+              { transform: "scale(1.9)", opacity: 0 },
+            ],
+            { duration: 900, easing: "ease-out" },
+          );
+        }
+        seen.beats[i] = s.beats;
+      }
+    });
+
+    // Lines from the leader to the servers that follow it glow green.
+    const follows = (id: number) => !!l && cluster.servers[id].alive && cluster.servers[id].leaderId === l.id;
+    for (const el of linkEls) {
+      const a = Number(el.dataset.a);
+      const b = Number(el.dataset.b);
+      const cut = cluster.isCut(a, b);
+      const lead = !cut && !!l && ((a === l.id && follows(b)) || (b === l.id && follows(a)));
+      if (el.dataset.lead !== String(lead)) el.dataset.lead = String(lead);
+      if (el.dataset.cut !== String(cut)) {
+        el.dataset.cut = String(cut);
+        el.setAttribute("aria-label", `Line between ${NAMES[a]} and ${NAMES[b]}${cut ? ", cut. Press to fix." : ". Press to cut."}`);
+      }
+    }
+  }
+
+  // A server's copy of the list, under its name. Faded items aren't saved yet.
+  function drawItems(el: SVGGElement, s: Server) {
+    const start = Math.max(0, s.log.length - MAX_ITEMS);
+    const shown = s.log.slice(start);
+    const x = (k: number) => (k - (shown.length - 1) / 2) * 17;
+    el.querySelector(".items")!.innerHTML =
+      (start ? `<text x="${x(-1)}" class="pending">…</text>` : "") +
+      shown.map((e, k) => `<text x="${x(k)}" class="${start + k < s.commit ? "saved" : "pending"}">${e.value}</text>`).join("");
+  }
+
+  // Messages on their way: "vote for me?", a yes vote, a ping, new items, or "got it".
+  function drawFlights() {
+    const now = cluster.now;
+    const parts: string[] = [];
+    for (const f of cluster.flights) {
+      const p = (now - f.sent) / (f.arrive - f.sent);
+      if (cluster.isCut(f.from, f.to) && p > 0.5) continue; // it stops at the cut
+      const a = pos[f.from];
+      const b = pos[f.to];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      const ux = (b.x - a.x) / len;
+      const uy = (b.y - a.y) / len;
+      // Travel from the edge of one face to the edge of the other, a little to
+      // one side so messages going opposite ways don't overlap.
+      const d = EDGE + (len - 2 * EDGE) * p;
+      const x = (a.x + ux * d - uy * 5).toFixed(1);
+      const y = (a.y + uy * d + ux * 5).toFixed(1);
+      parts.push(dot(f, x, y));
+    }
+    flightsEl.innerHTML = parts.join("");
+  }
+
+  function dot(f: Flight, x: string, y: string) {
+    const text = (t: string, size: number, fill: string) =>
+      `<text x="${x}" y="${y}" fill="${fill}" font-size="${size}" font-weight="700" text-anchor="middle" dominant-baseline="central">${t}</text>`;
+    const m = f.msg;
+    if (m.kind === "vote-req") return `<circle cx="${x}" cy="${y}" r="8" fill="#f59e0b"/>${text("?", 11, "#fff")}`;
+    if (m.kind === "vote" && m.granted) return text("♥", 18, "#ec4899");
+    if (m.kind === "append") {
+      if (!m.entries.length) return `<circle cx="${x}" cy="${y}" r="3.5" fill="#22c55e"/>`;
+      return parcel(m.entries.map((e) => e.value), Number(x), Number(y));
+    }
+    // "Got it" for items flies back as a ✓; the leader counts them to know when
+    // an item is saved. Acks for plain pings and refusals aren't drawn.
+    if (m.kind === "append-ok" && m.success && m.added) return `<circle cx="${x}" cy="${y}" r="8" fill="#16a34a"/>${text("✓", 11, "#fff")}`;
+    return "";
+  }
+
+  // A message carries every item the receiver is missing, not just the newest,
+  // so the pill shows them all: up to 3, then a count.
+  const PARCEL_MAX = 3;
+  function parcel(values: string[], x: number, y: number) {
+    const shown = values.slice(-PARCEL_MAX);
+    const extra = values.length - shown.length;
+    const W = 15; // per item
+    const COUNT = extra ? 20 : 0; // room for "+n"
+    const width = 10 + COUNT + shown.length * W;
+    const left = x - width / 2;
+    const label = (t: string, cx: number, size: number, fill = "#000") =>
+      `<text x="${cx.toFixed(1)}" y="${y.toFixed(1)}" fill="${fill}" font-size="${size}" font-weight="700" text-anchor="middle" dominant-baseline="central">${t}</text>`;
+    return (
+      `<rect x="${left.toFixed(1)}" y="${(y - 11).toFixed(1)}" width="${width}" height="22" rx="11" fill="#fff" stroke="#22c55e" stroke-width="2.5"/>` +
+      (extra ? label(`+${extra}`, left + 5 + COUNT / 2, 10, "#15803d") : "") +
+      shown.map((v, i) => label(v, left + 5 + COUNT + W * i + W / 2, 13)).join("")
+    );
+  }
+
+  function drawCaption() {
+    if (cluster.committed.length > seen.committed) {
+      const saved = cluster.committed.slice(seen.committed).map((e) => e.value);
+      flash = { text: `${saved.join(" ")} saved ✅`, until: cluster.now + FLASH_MS };
+      seen.committed = cluster.committed.length;
+    }
+    const text = caption();
+    if (text !== seen.caption) captionEl.textContent = seen.caption = text;
+  }
+
+  function drawQuest() {
+    const step = QUEST[quest];
+    if (step && !questDone && step.check()) questDone = { at: performance.now(), text: step.done() };
+    if (questDone && performance.now() - questDone.at > QUEST_PAUSE) {
+      quest++;
+      questDone = null;
+    }
+    const state = quest >= QUEST.length ? "finished" : questDone ? "done" : "todo";
+    const text =
+      state === "finished" ? "🎉 That's Raft! Real servers do all this in a blink." : questDone ? `✓ ${questDone.text}` : `👉 ${QUEST[quest].todo}`;
+    if (text === seen.quest) return;
+    seen.quest = text;
+    questTextEl.textContent = text;
+    questEl.dataset.step = String(quest);
+    questEl.dataset.state = state;
+    questDots.forEach((d, k) => {
+      const filled = k < quest || (k === quest && state === "done");
+      d.className = `size-2 rounded-full ${filled ? "bg-green-600" : k === quest ? "bg-green-400 dark:bg-green-700" : "bg-green-200 dark:bg-green-900"}`;
+    });
+  }
+
+  function draw() {
+    drawNodes();
+    drawFlights();
+    drawCaption();
+    drawQuest();
+    addBtn.disabled = !cluster.leader();
+  }
+
+  // Main loop. Long gaps (a hidden tab) are capped so the cluster doesn't jump.
+  let last = performance.now();
+  function frame(t: number) {
+    const dt = Math.min(t - last, 100);
+    last = t;
+    if (!paused) cluster.advance(dt * SPEED);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // Wiring
+
+  function activate(el: Element, fn: () => void) {
+    el.addEventListener("click", fn);
+    el.addEventListener("keydown", (ev) => {
+      const key = (ev as KeyboardEvent).key;
+      if (key !== "Enter" && key !== " ") return;
+      ev.preventDefault();
+      fn();
+    });
+  }
+
+  nodeEls.forEach((el, i) =>
+    activate(el, () => {
+      const s = cluster.servers[i];
+      if (s.alive && s === cluster.leader()) stoppedLeaderTerm = s.term;
+      cluster.setAlive(i, !s.alive);
+    }),
+  );
+  for (const el of linkEls) activate(el, () => cluster.toggleLink(Number(el.dataset.a), Number(el.dataset.b)));
+
+  addBtn.addEventListener("click", () => {
+    if (!cluster.propose(nextEmoji())) return;
+    emojiIndex++;
+    $("next").textContent = nextEmoji();
+  });
+
+  pauseBtn.addEventListener("click", () => {
+    paused = !paused;
+    pauseBtn.setAttribute("aria-label", paused ? "Play" : "Pause");
+    $("icon-pause").classList.toggle("hidden", paused);
+    $("icon-play").classList.toggle("hidden", !paused);
+  });
+
+  $("reset").addEventListener("click", () => {
+    cluster = new Cluster(NAMES);
+    seen = fresh();
+    flash = { text: "", until: -1 };
+    quest = 0;
+    questDone = null;
+    stoppedLeaderTerm = null;
+    emojiIndex = 0;
+    $("next").textContent = nextEmoji();
+  });
+</script>
+
+<style>
+  .node {
+    --fill: #f0fdf4;
+    --stroke: #22c55e;
+    --face: #1f2937;
+    --ring: #22c55e;
+    cursor: pointer;
+    outline: none;
+  }
+  .node[data-role="candidate"] {
+    --fill: #fef3c7;
+    --stroke: #f59e0b;
+    --ring: #f59e0b;
+  }
+  .node[data-role="leader"] {
+    --fill: #16a34a;
+    --stroke: #15803d;
+    --face: #fff;
+  }
+  .node[data-role="dead"] {
+    --fill: #e5e7eb;
+    --stroke: #9ca3af;
+    --face: #6b7280;
+  }
+  :global([data-theme="dark"]) .node {
+    --fill: #1c3326;
+    --face: #e5e7eb;
+  }
+  :global([data-theme="dark"]) .node[data-role="candidate"] {
+    --fill: #4a3a12;
+    --face: #fde68a;
+  }
+  :global([data-theme="dark"]) .node[data-role="leader"] {
+    --fill: #16a34a;
+    --face: #fff;
+  }
+  :global([data-theme="dark"]) .node[data-role="dead"] {
+    --fill: #3a3d44;
+    --stroke: #6b7280;
+    --face: #9ca3af;
+  }
+
+  .body {
+    fill: var(--fill);
+    stroke: var(--stroke);
+    stroke-width: 3;
+    transition:
+      fill 0.3s,
+      stroke 0.3s;
+  }
+  .node:hover .body,
+  .node:focus-visible .body {
+    stroke-width: 5;
+  }
+  .pulse {
+    fill: none;
+    stroke: #22c55e;
+    stroke-width: 3;
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    pointer-events: none;
+  }
+  .track,
+  .timer {
+    fill: none;
+    stroke-width: 3.5;
+  }
+  .track {
+    stroke: #e5e7eb;
+  }
+  :global([data-theme="dark"]) .track {
+    stroke: #3f444c;
+  }
+  .timer {
+    stroke: var(--ring);
+    stroke-linecap: round;
+  }
+  .node[data-role="leader"] .track,
+  .node[data-role="dead"] .track {
+    display: none;
+  }
+
+  .crown {
+    fill: #facc15;
+    stroke: #ca8a04;
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+  .heart {
+    font-size: 17px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    fill: #e5e7eb;
+    stroke: #d1d5db;
+    stroke-width: 0.8;
+    transition: fill 0.2s;
+  }
+  .heart.got {
+    fill: #ec4899;
+    stroke: #db2777;
+  }
+  :global([data-theme="dark"]) .heart:not(.got) {
+    fill: #3f444c;
+    stroke: #6b7280;
+  }
+  .cheek {
+    fill: #f472b6;
+    opacity: 0.45;
+  }
+  .eyes-open {
+    fill: var(--face);
+  }
+  .eyes-open ellipse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: blink 5s infinite;
+    animation-delay: var(--blink-delay);
+  }
+  .eyes-happy,
+  .eyes-shut,
+  .mouth-follower,
+  .mouth-dead {
+    fill: none;
+    stroke: var(--face);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+  .mouth-candidate,
+  .mouth-leader {
+    fill: var(--face);
+  }
+  /* Fades rather than bobs: moving it would keep resizing the tap target. */
+  .zzz {
+    font-size: 16px;
+    animation: doze 2.4s ease-in-out infinite;
+  }
+
+  /* One look per role. */
+  .crown,
+  .votes,
+  .eyes,
+  .mouth,
+  .zzz {
+    display: none;
+  }
+  .node[data-role="follower"] .eyes-open,
+  .node[data-role="follower"] .mouth-follower,
+  .node[data-role="candidate"] .votes,
+  .node[data-role="candidate"] .eyes-open,
+  .node[data-role="candidate"] .mouth-candidate,
+  .node[data-role="leader"] .crown,
+  .node[data-role="leader"] .eyes-happy,
+  .node[data-role="leader"] .mouth-leader,
+  .node[data-role="dead"] .eyes-shut,
+  .node[data-role="dead"] .mouth-dead,
+  .node[data-role="dead"] .zzz {
+    display: inline;
+  }
+  .node[data-role="leader"] .cheek {
+    fill: #fda4af;
+    opacity: 0.6;
+  }
+  .node[data-role="dead"] .cheek {
+    display: none;
+  }
+
+  .name {
+    font-size: 14px;
+    font-weight: 600;
+    fill: #374151;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+  :global([data-theme="dark"]) .name {
+    fill: #e5e7eb;
+  }
+  .items :global(text) {
+    font-size: 15px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    fill: #9ca3af;
+    transition: opacity 0.3s;
+  }
+  .items :global(.pending) {
+    opacity: 0.3;
+  }
+  .node[data-role="dead"] .items {
+    opacity: 0.5;
+  }
+
+  .link {
+    cursor: pointer;
+    outline: none;
+  }
+  .hit {
+    stroke: transparent;
+    stroke-width: 18;
+  }
+  .wire {
+    stroke: #e5e7eb;
+    stroke-width: 2;
+    transition: stroke 0.3s;
+  }
+  :global([data-theme="dark"]) .wire {
+    stroke: #3a3f47;
+  }
+  .link[data-lead="true"] .wire {
+    stroke: #86efac;
+    stroke-width: 3.5;
+  }
+  :global([data-theme="dark"]) .link[data-lead="true"] .wire {
+    stroke: #15803d;
+  }
+  .link:hover .wire,
+  .link:focus-visible .wire {
+    stroke: #fca5a5;
+    stroke-width: 3.5;
+  }
+  .link[data-cut="true"] .wire {
+    stroke: #ef4444;
+    stroke-width: 2;
+    stroke-dasharray: 5 6;
+  }
+  .snip {
+    display: none;
+  }
+  .link[data-cut="true"] .snip {
+    display: inline;
+  }
+  .snip circle {
+    fill: #fee2e2;
+    stroke: #ef4444;
+    stroke-width: 2;
+  }
+  .snip path {
+    stroke: #ef4444;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+  }
+
+  @keyframes blink {
+    0%,
+    92%,
+    100% {
+      transform: scaleY(1);
+    }
+    95% {
+      transform: scaleY(0.1);
+    }
+  }
+  @keyframes doze {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .eyes-open ellipse,
+    .zzz {
+      animation: none;
+    }
+  }
+</style>
